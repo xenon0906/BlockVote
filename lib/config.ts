@@ -9,8 +9,20 @@ export const config = createConfig({
   chains: [sepolia],
   connectors: [
     injected(),
-    coinbaseWallet({ appName: 'Blockchain Voting' }),
-    walletConnect({ projectId }),
+    walletConnect({
+      projectId,
+      metadata: {
+        name: 'BlockVote',
+        description: 'Decentralized Voting on Ethereum',
+        url: typeof window !== 'undefined' ? window.location.origin : 'https://blockvote.vercel.app',
+        icons: [typeof window !== 'undefined' ? `${window.location.origin}/icon.svg` : 'https://blockvote.vercel.app/icon.svg'],
+      },
+      showQrModal: true,
+    }),
+    coinbaseWallet({
+      appName: 'BlockVote',
+      appLogoUrl: '/icon.svg',
+    }),
   ],
   transports: {
     [sepolia.id]: http(),
