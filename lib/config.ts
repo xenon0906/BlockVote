@@ -13,13 +13,7 @@ export const config = createConfig({
     walletConnect({ projectId }),
   ],
   transports: {
-    [sepolia.id]: http({
-      batch: {
-        multicall: true,
-      },
-      retryCount: 2,
-      timeout: 10_000,
-    }),
+    [sepolia.id]: http(),
   },
 })
 
