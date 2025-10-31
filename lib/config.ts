@@ -8,16 +8,27 @@ const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJ
 export const config = createConfig({
   chains: [sepolia],
   connectors: [
-    injected(),
+    injected({
+      target() {
+        return {
+          id: 'injected',
+          name: 'Browser Wallet',
+          provider: typeof window !== 'undefined' ? window.ethereum : undefined,
+        }
+      },
+    }),
     walletConnect({
       projectId,
       metadata: {
         name: 'BlockVote',
         description: 'Decentralized Voting on Ethereum',
-        url: typeof window !== 'undefined' ? window.location.origin : 'https://blockvote.vercel.app',
-        icons: [typeof window !== 'undefined' ? `${window.location.origin}/icon.svg` : 'https://blockvote.vercel.app/icon.svg'],
+        url: typeof window !== 'undefined' ? window.location.origin : 'https://blockvoteapp.vercel.app',
+        icons: [typeof window !== 'undefined' ? `${window.location.origin}/icon.svg` : 'https://blockvoteapp.vercel.app/icon.svg'],
       },
       showQrModal: true,
+      qrModalOptions: {
+        themeMode: 'dark',
+      },
     }),
     coinbaseWallet({
       appName: 'BlockVote',
@@ -27,6 +38,7 @@ export const config = createConfig({
   transports: {
     [sepolia.id]: http(),
   },
+  multiInjectedProviderDiscovery: true,
 })
 
 export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`

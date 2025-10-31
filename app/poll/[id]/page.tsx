@@ -194,7 +194,15 @@ export default function PollDetail() {
   }
 
   const isEnded = Number(poll.endTime) * 1000 < Date.now()
-  const canAddCandidate = poll.isActive && !isEnded && Number(poll.candidateCount) < Number(poll.maxCandidates)
+  const isUserAlreadyCandidate = candidates.some(
+    (candidate) => candidate.candidateAddress.toLowerCase() === address?.toLowerCase()
+  )
+  const canAddCandidate =
+    address &&
+    poll.isActive &&
+    !isEnded &&
+    !isUserAlreadyCandidate &&
+    Number(poll.candidateCount) < Number(poll.maxCandidates)
   const isCreator = address?.toLowerCase() === poll.creator.toLowerCase()
 
   return (
@@ -307,6 +315,14 @@ export default function PollDetail() {
               Candidates ({Number(poll.candidateCount)}/{Number(poll.maxCandidates)})
             </h2>
 
+            {!address && poll.isActive && !isEnded && (
+              <div className="text-sm text-gray-400 italic">Connect wallet to register</div>
+            )}
+
+            {address && isUserAlreadyCandidate && poll.isActive && !isEnded && (
+              <div className="text-sm text-green-400 italic">You are already a candidate</div>
+            )}
+
             {canAddCandidate && !showAddCandidate && (
               <button
                 onClick={() => setShowAddCandidate(true)}
@@ -408,7 +424,11 @@ export default function PollDetail() {
                     {/* Action Buttons */}
                     {poll.isActive && !isEnded && !poll.isDeleted && (
                       <div className="flex space-x-2">
-                        {!hasVoted ? (
+                        {!address ? (
+                          <div className="flex-1 px-4 py-2 bg-gray-500/20 text-gray-400 rounded-lg text-center">
+                            Connect wallet to vote
+                          </div>
+                        ) : !hasVoted ? (
                           <>
                             <button
                               onClick={() => handleVote(index)}

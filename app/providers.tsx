@@ -37,6 +37,15 @@ function RainbowKitWrapper({ children }: { children: ReactNode }) {
       })}
       modalSize="compact"
       initialChain={config.chains[0]}
+      appInfo={{
+        appName: 'BlockVote',
+        learnMoreUrl: 'https://blockvoteapp.vercel.app',
+        disclaimer: () => (
+          <div style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: '#888' }}>
+            By connecting your wallet, you agree to the Terms of Service and Privacy Policy
+          </div>
+        ),
+      }}
     >
       {children}
     </RainbowKitProvider>

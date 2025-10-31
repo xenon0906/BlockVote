@@ -58,9 +58,12 @@ export default function Home() {
 
   // Fetch poll data using the hook
   const trendingIdsFiltered = ((trendingIds as bigint[]) || []).filter(id => id > 0)
+  const activeIdsFiltered = ((activeIds as bigint[]) || []).filter(id => id > 0)
+  const completedIdsFiltered = ((completedIds as bigint[]) || []).filter(id => id > 0)
+
   const { polls: trendingPolls, isLoading: loadingTrendingPolls } = useMultiplePollsData(trendingIdsFiltered)
-  const { polls: activePolls, isLoading: loadingActivePolls } = useMultiplePollsData((activeIds as bigint[]) || [])
-  const { polls: completedPolls, isLoading: loadingCompletedPolls } = useMultiplePollsData((completedIds as bigint[]) || [])
+  const { polls: activePolls, isLoading: loadingActivePolls } = useMultiplePollsData(activeIdsFiltered)
+  const { polls: completedPolls, isLoading: loadingCompletedPolls } = useMultiplePollsData(completedIdsFiltered)
 
   const handleRefresh = () => {
     refetchTrending()
