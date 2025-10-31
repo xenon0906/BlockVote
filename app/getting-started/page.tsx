@@ -43,10 +43,10 @@ export default function GettingStarted() {
                   <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-sm rounded-full">Required</span>
                 </div>
                 <p className="text-gray-400 mb-4">
-                  Click the "Connect Wallet" button in the top right corner to connect your Ethereum wallet. BlockVote supports MetaMask, WalletConnect, and Coinbase Wallet.
+                  Click the &quot;Connect Wallet&quot; button in the top right corner to connect your Ethereum wallet. BlockVote supports MetaMask, WalletConnect, and Coinbase Wallet.
                 </p>
                 <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                  <p className="text-sm text-gray-300 font-medium mb-2">What you'll need:</p>
+                  <p className="text-sm text-gray-300 font-medium mb-2">What you&apos;ll need:</p>
                   <ul className="list-disc list-inside text-sm text-gray-400 space-y-1">
                     <li>A wallet installed (e.g., MetaMask browser extension)</li>
                     <li>Some Sepolia ETH for gas fees (free from faucets)</li>
@@ -69,7 +69,7 @@ export default function GettingStarted() {
                   <span className="px-3 py-1 bg-purple-500/20 text-purple-400 text-sm rounded-full">Creator</span>
                 </div>
                 <p className="text-gray-400 mb-4">
-                  Click "Create Poll" to start a new voting poll. Fill in the details and set your parameters.
+                  Click &quot;Create Poll&quot; to start a new voting poll. Fill in the details and set your parameters.
                 </p>
                 <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
                   <p className="text-sm text-gray-300 font-medium mb-2">Poll Configuration:</p>

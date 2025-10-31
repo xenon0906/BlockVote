@@ -115,11 +115,11 @@ export default function HowItWorks() {
                 </li>
                 <li className="flex items-start space-x-2">
                   <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                  <span>After that, pay the candidate's vote value to replace them</span>
+                  <span>After that, pay the candidate&apos;s vote value to replace them</span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                  <span>Payment goes to the reward pool, increasing winner's prize</span>
+                  <span>Payment goes to the reward pool, increasing winner&apos;s prize</span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
@@ -203,7 +203,7 @@ export default function HowItWorks() {
             <div className="glass-effect rounded-xl p-6">
               <h3 className="font-semibold text-lg mb-2">Is BlockVote free to use?</h3>
               <p className="text-gray-400 text-sm">
-                Creating polls and adding candidates is free. Voting requires paying the poll's voting fee (set by creator), which goes into the reward pool for the winner.
+                Creating polls and adding candidates is free. Voting requires paying the poll&apos;s voting fee (set by creator), which goes into the reward pool for the winner.
               </p>
             </div>
             <div className="glass-effect rounded-xl p-6">
@@ -221,7 +221,7 @@ export default function HowItWorks() {
             <div className="glass-effect rounded-xl p-6">
               <h3 className="font-semibold text-lg mb-2">What happens if a poll is deleted?</h3>
               <p className="text-gray-400 text-sm">
-                If the poll creator deletes a poll, all voting fees are held in the contract. Voters can claim their refunds at any time using the "Claim Refund" button.
+                If the poll creator deletes a poll, all voting fees are held in the contract. Voters can claim their refunds at any time using the &quot;Claim Refund&quot; button.
               </p>
             </div>
           </div>

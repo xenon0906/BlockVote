@@ -112,7 +112,7 @@ export default function PollDetail() {
       setReplaceIndex(null)
       setReplacePayment('')
     }
-  }, [isSuccess, isDeleting, router])
+  }, [isSuccess, isDeleting, router, refetchPoll, refetchCandidates])
 
   const handleAddCandidate = () => {
     if (!candidateName) return
@@ -431,7 +431,7 @@ export default function PollDetail() {
                           </>
                         ) : (
                           <div className="flex-1 px-4 py-2 bg-green-500/20 text-green-400 rounded-lg text-center">
-                            You've already voted
+                            You&apos;ve already voted
                           </div>
                         )}
                       </div>
