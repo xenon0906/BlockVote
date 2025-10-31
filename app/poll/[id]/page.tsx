@@ -58,6 +58,7 @@ export default function PollDetail() {
   const [showAddCandidate, setShowAddCandidate] = useState(false)
   const [replaceIndex, setReplaceIndex] = useState<number | null>(null)
   const [replacePayment, setReplacePayment] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Read poll data
   const { data: pollData, refetch: refetchPoll } = useReadContract({
@@ -157,8 +158,6 @@ export default function PollDetail() {
       args: [BigInt(pollId)],
     })
   }
-
-  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleDeletePoll = () => {
     if (confirm('Are you sure you want to delete this poll? All voters will be refunded.')) {
