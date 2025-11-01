@@ -16,13 +16,6 @@
     }
   ],
   "categories": ["business", "finance", "productivity"],
-  "screenshots": [
-    {
-      "src": "/screenshot-1.png",
-      "sizes": "540x720",
-      "type": "image/png"
-    }
-  ],
   "shortcuts": [
     {
       "name": "Create Poll",

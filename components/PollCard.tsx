@@ -30,6 +30,15 @@ function PollCard({ poll, type, rank }: PollCardProps) {
   const endTime = new Date(Number(poll.endTime) * 1000)
   const timeRemaining = poll.isActive ? formatDistanceToNow(endTime, { addSuffix: true }) : 'Ended'
 
+  // Debug logging
+  if (typeof window !== 'undefined') {
+    console.log('PollCard Render:', {
+      pollId: poll.id.toString(),
+      title: poll.title,
+      linkHref: `/poll/${poll.id.toString()}`
+    })
+  }
+
   const getBadgeColor = () => {
     switch (type) {
       case 'trending':
