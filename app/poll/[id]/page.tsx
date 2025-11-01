@@ -194,16 +194,31 @@ export default function PollDetail() {
   }
 
   const isEnded = Number(poll.endTime) * 1000 < Date.now()
-  const isUserAlreadyCandidate = candidates.some(
-    (candidate) => candidate.candidateAddress.toLowerCase() === address?.toLowerCase()
-  )
+  const isUserAlreadyCandidate = address ? candidates.some(
+    (candidate) => candidate.candidateAddress.toLowerCase() === address.toLowerCase()
+  ) : false
   const canAddCandidate =
-    address &&
+    Boolean(address) &&
     poll.isActive &&
     !isEnded &&
     !isUserAlreadyCandidate &&
     Number(poll.candidateCount) < Number(poll.maxCandidates)
-  const isCreator = address?.toLowerCase() === poll.creator.toLowerCase()
+  const isCreator = address ? address.toLowerCase() === poll.creator.toLowerCase() : false
+
+  // Debug logging
+  if (typeof window !== 'undefined') {
+    console.log('Poll Debug:', {
+      pollId,
+      address,
+      isActive: poll.isActive,
+      isEnded,
+      candidateCount: Number(poll.candidateCount),
+      maxCandidates: Number(poll.maxCandidates),
+      isUserAlreadyCandidate,
+      canAddCandidate,
+      candidatesLength: candidates.length
+    })
+  }
 
   return (
     <div className="min-h-screen">
@@ -218,6 +233,21 @@ export default function PollDetail() {
           <ArrowLeft className="w-5 h-5" />
           <span>Back to Polls</span>
         </button>
+
+        {/* Connection Status Banner */}
+        {!address && poll.isActive && !isEnded && (
+          <div className="glass-effect rounded-2xl p-6 mb-6 border-2 border-yellow-500/50 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-yellow-400 mb-2">⚠️ Wallet Not Connected</h3>
+                <p className="text-gray-300">Connect your wallet to register as a candidate or vote</p>
+              </div>
+              <div className="text-sm text-gray-400">
+                Click &quot;Connect Wallet&quot; button in the header →
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Poll Header */}
         <div className="glass-effect rounded-2xl p-8 mb-8 animate-fade-in">
@@ -308,66 +338,64 @@ export default function PollDetail() {
           )}
         </div>
 
+        {/* Register as Candidate Section - Always visible when eligible */}
+        {canAddCandidate && poll.isActive && !isEnded && (
+          <div className="glass-effect rounded-2xl p-6 mb-6 border-2 border-primary/50 animate-fade-in">
+            <h3 className="text-xl font-bold text-primary mb-4">✨ Register as a Candidate</h3>
+            <div className="space-y-4">
+              <input
+                type="text"
+                value={candidateName}
+                onChange={(e) => setCandidateName(e.target.value)}
+                placeholder="Enter your name (e.g., John Doe)"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-lg"
+              />
+              <button
+                onClick={handleAddCandidate}
+                className="w-full px-6 py-4 bg-gradient-to-r from-primary to-secondary hover:opacity-90 rounded-lg transition-all font-semibold text-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                disabled={!candidateName || isPending || isConfirming}
+              >
+                {isPending || isConfirming ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {isPending ? 'Waiting for approval...' : 'Confirming transaction...'}
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-5 h-5" />
+                    Register as Candidate
+                  </>
+                )}
+              </button>
+              <p className="text-sm text-gray-400 text-center">
+                Free to register • You&apos;ll compete for votes in this poll
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Already Candidate Banner */}
+        {address && isUserAlreadyCandidate && poll.isActive && !isEnded && (
+          <div className="glass-effect rounded-2xl p-6 mb-6 border-2 border-green-500/50 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
+                <UserPlus className="w-6 h-6 text-green-400" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-green-400">You&apos;re a Candidate!</h3>
+                <p className="text-gray-300">You&apos;re registered in this poll. Good luck!</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Candidates Section */}
         <div className="glass-effect rounded-2xl p-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">
               Candidates ({Number(poll.candidateCount)}/{Number(poll.maxCandidates)})
             </h2>
-
-            {!address && poll.isActive && !isEnded && (
-              <div className="text-sm text-gray-400 italic">Connect wallet to register</div>
-            )}
-
-            {address && isUserAlreadyCandidate && poll.isActive && !isEnded && (
-              <div className="text-sm text-green-400 italic">You are already a candidate</div>
-            )}
-
-            {canAddCandidate && !showAddCandidate && (
-              <button
-                onClick={() => setShowAddCandidate(true)}
-                className="px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary rounded-lg transition-colors flex items-center space-x-2"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>Add Candidate</span>
-              </button>
-            )}
           </div>
-
-          {/* Add Candidate Form */}
-          {showAddCandidate && (
-            <div className="mb-6 p-4 bg-white/5 rounded-lg">
-              <input
-                type="text"
-                value={candidateName}
-                onChange={(e) => setCandidateName(e.target.value)}
-                placeholder="Enter your candidate name"
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mb-3"
-              />
-              <div className="flex space-x-3">
-                <button
-                  onClick={handleAddCandidate}
-                  className="flex-1 px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50"
-                  disabled={!candidateName || isPending || isConfirming}
-                >
-                  {isPending || isConfirming ? (
-                    <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-                  ) : (
-                    'Add as Candidate'
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAddCandidate(false)
-                    setCandidateName('')
-                  }}
-                  className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Candidates List */}
           {candidates.length === 0 ? (
