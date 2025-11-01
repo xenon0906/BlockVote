@@ -56,12 +56,8 @@ export function useMultiplePollsData(pollIds: bigint[]) {
       const results = await Promise.all(pollPromises)
       const validPolls = results.filter(poll => poll !== null)
 
-      // Only update state if polls have actually changed
-      setPolls(prevPolls => {
-        const newPollsString = JSON.stringify(validPolls)
-        const prevPollsString = JSON.stringify(prevPolls)
-        return newPollsString !== prevPollsString ? validPolls : prevPolls
-      })
+      // Update state directly without comparison to avoid BigInt serialization
+      setPolls(validPolls)
     } catch (error) {
       console.error('Error fetching polls:', error)
       setPolls([])
