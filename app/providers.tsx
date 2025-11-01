@@ -24,14 +24,19 @@ const queryClient = new QueryClient({
 
 function RainbowKitWrapper({ children }: { children: ReactNode }) {
   const { theme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return <>{children}</>
+  }
 
   return (
     <RainbowKitProvider
-      theme={theme === 'dark' ? darkTheme({
-        accentColor: '#6366f1',
-        accentColorForeground: 'white',
-        borderRadius: 'medium',
-      }) : lightTheme({
+      theme={darkTheme({
         accentColor: '#6366f1',
         accentColorForeground: 'white',
         borderRadius: 'medium',
@@ -54,23 +59,13 @@ function RainbowKitWrapper({ children }: { children: ReactNode }) {
 }
 
 export function Providers({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
   return (
     <ThemeProvider>
       <WagmiProvider config={config} reconnectOnMount={true}>
         <QueryClientProvider client={queryClient}>
-          {mounted ? (
-            <RainbowKitWrapper>
-              {children}
-            </RainbowKitWrapper>
-          ) : (
-            children
-          )}
+          <RainbowKitWrapper>
+            {children}
+          </RainbowKitWrapper>
         </QueryClientProvider>
       </WagmiProvider>
     </ThemeProvider>

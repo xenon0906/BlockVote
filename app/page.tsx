@@ -58,12 +58,12 @@ export default function Home() {
 
   // Memoize filtered IDs to prevent unnecessary re-renders
   const trendingIdsFiltered = useMemo(() =>
-    ((trendingIds as bigint[]) || []).filter(id => id > 0n),
+    ((trendingIds as bigint[]) || []).filter(id => id > BigInt(0)),
     [trendingIds]
   )
 
   const activeIdsFiltered = useMemo(() =>
-    ((activeIds as bigint[]) || []).filter(id => id > 0n),
+    ((activeIds as bigint[]) || []).filter(id => id > BigInt(0)),
     [activeIds]
   )
 

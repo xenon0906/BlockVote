@@ -18,8 +18,8 @@ export const config = createConfig({
       metadata: {
         name: 'BlockVote',
         description: 'Decentralized Voting on Ethereum',
-        url: typeof window !== 'undefined' ? window.location.origin : 'https://blockvoteapp.vercel.app',
-        icons: [typeof window !== 'undefined' ? `${window.location.origin}/icon.svg` : 'https://blockvoteapp.vercel.app/icon.svg'],
+        url: 'https://blockvoteapp.vercel.app',
+        icons: ['https://blockvoteapp.vercel.app/icon.svg'],
       },
       showQrModal: true,
       qrModalOptions: {

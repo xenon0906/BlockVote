@@ -17,8 +17,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setMounted(true)
-    const root = document.documentElement
-    root.classList.add('dark')
+    if (typeof window !== 'undefined') {
+      const root = document.documentElement
+      root.classList.add('dark')
+    }
   }, [])
 
   const toggleTheme = () => {
