@@ -61,11 +61,11 @@ export default function PollDetail() {
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Read poll data
-  const { data: pollData, refetch: refetchPoll } = useReadContract({
+  const { data: pollData, refetch: refetchPoll, isLoading: isPollLoading, isError: isPollError } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: VOTING_CONTRACT_ABI,
     functionName: 'getPoll',
-    args: [BigInt(pollId)],
+    args: pollId ? [BigInt(pollId)] : undefined,
   })
 
   // Read candidates
@@ -73,7 +73,7 @@ export default function PollDetail() {
     address: CONTRACT_ADDRESS,
     abi: VOTING_CONTRACT_ABI,
     functionName: 'getAllCandidates',
-    args: [BigInt(pollId)],
+    args: pollId ? [BigInt(pollId)] : undefined,
   })
 
   // Check if user has voted
@@ -81,7 +81,7 @@ export default function PollDetail() {
     address: CONTRACT_ADDRESS,
     abi: VOTING_CONTRACT_ABI,
     functionName: 'hasVoted',
-    args: [BigInt(pollId), address as `0x${string}`],
+    args: pollId && address ? [BigInt(pollId), address as `0x${string}`] : undefined,
   })
 
   const { writeContract, data: hash, isPending } = useWriteContract()
@@ -180,13 +180,39 @@ export default function PollDetail() {
     })
   }
 
-  if (!poll) {
+  // Loading state
+  if (isPollLoading || !pollData) {
     return (
       <div className="min-h-screen">
         <Header />
         <main className="container mx-auto px-4 pt-24">
-          <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            <p className="text-gray-400">Loading poll data...</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  // Error state
+  if (isPollError || !poll) {
+    return (
+      <div className="min-h-screen">
+        <Header />
+        <main className="container mx-auto px-4 pt-24">
+          <div className="glass-effect rounded-2xl p-12 text-center max-w-2xl mx-auto">
+            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-400" />
+            <h2 className="text-2xl font-bold mb-2">Poll Not Found</h2>
+            <p className="text-gray-400 mb-6">
+              This poll doesn&apos;t exist or has been deleted.
+            </p>
+            <button
+              onClick={() => router.push('/')}
+              className="px-6 py-3 bg-primary hover:bg-primary/90 rounded-lg transition-colors"
+            >
+              Back to Home
+            </button>
           </div>
         </main>
       </div>
