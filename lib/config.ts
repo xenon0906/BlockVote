@@ -8,15 +8,11 @@ const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJ
 export const config = createConfig({
   chains: [sepolia],
   connectors: [
+    // MetaMask and other injected wallets
     injected({
-      target() {
-        return {
-          id: 'injected',
-          name: 'Browser Wallet',
-          provider: typeof window !== 'undefined' ? window.ethereum : undefined,
-        }
-      },
+      shimDisconnect: true,
     }),
+    // WalletConnect for mobile deep linking
     walletConnect({
       projectId,
       metadata: {
@@ -33,6 +29,7 @@ export const config = createConfig({
         },
       },
     }),
+    // Coinbase Wallet
     coinbaseWallet({
       appName: 'BlockVote',
       appLogoUrl: '/icon.svg',
@@ -41,14 +38,14 @@ export const config = createConfig({
   transports: {
     [sepolia.id]: http(undefined, {
       batch: {
-        wait: 50, // Batch requests for better performance
+        wait: 50,
       },
       retryCount: 3,
       timeout: 10000,
     }),
   },
   multiInjectedProviderDiscovery: true,
-  ssr: true, // Enable SSR support
+  ssr: true,
 })
 
 export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`

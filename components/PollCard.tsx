@@ -51,7 +51,7 @@ function PollCard({ poll, type, rank }: PollCardProps) {
   }
 
   return (
-    <Link href={`/poll/${poll.id}`}>
+    <Link href={`/poll/${poll.id.toString()}`} className="block">
       <div className="glass-effect rounded-xl p-6 hover:scale-[1.02] transition-all duration-300 cursor-pointer group relative overflow-hidden">
         {/* Animated background gradient */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-secondary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useReadContract, useAccount } from 'wagmi'
 import { CONTRACT_ADDRESS } from '@/lib/config'
 import { VOTING_CONTRACT_ABI } from '@/lib/contract-abi'
@@ -9,7 +9,7 @@ import Header from '@/components/Header'
 import StatusBar from '@/components/StatusBar'
 import PollCard from '@/components/PollCard'
 import CreatePollModal from '@/components/CreatePollModal'
-import { Plus, TrendingUp, Activity, CheckCircle, Loader2 } from 'lucide-react'
+import { Plus, TrendingUp, Loader2 } from 'lucide-react'
 
 interface Poll {
   id: bigint
@@ -28,7 +28,6 @@ interface Poll {
 export default function Home() {
   const { isConnected } = useAccount()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'trending' | 'active' | 'completed'>('trending')
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -41,7 +40,8 @@ export default function Home() {
     abi: VOTING_CONTRACT_ABI,
     functionName: 'getTrendingPolls',
     query: {
-      refetchInterval: 30000, // Refetch every 30 seconds
+      refetchInterval: 15000, // Refetch every 15 seconds
+      staleTime: 10000,
     },
   })
 
@@ -51,55 +51,33 @@ export default function Home() {
     abi: VOTING_CONTRACT_ABI,
     functionName: 'getActivePolls',
     query: {
-      refetchInterval: 30000, // Refetch every 30 seconds
+      refetchInterval: 15000, // Refetch every 15 seconds
+      staleTime: 10000,
     },
   })
 
-  // Fetch completed poll IDs
-  const { data: completedIds, isLoading: loadingCompleted, refetch: refetchCompleted } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: VOTING_CONTRACT_ABI,
-    functionName: 'getCompletedPolls',
-    query: {
-      refetchInterval: 30000, // Refetch every 30 seconds
-    },
-  })
+  // Memoize filtered IDs to prevent unnecessary re-renders
+  const trendingIdsFiltered = useMemo(() =>
+    ((trendingIds as bigint[]) || []).filter(id => id > 0n),
+    [trendingIds]
+  )
 
-  // Fetch poll data using the hook
-  const trendingIdsFiltered = ((trendingIds as bigint[]) || []).filter(id => id > 0)
-  const activeIdsFiltered = ((activeIds as bigint[]) || []).filter(id => id > 0)
-  const completedIdsFiltered = ((completedIds as bigint[]) || []).filter(id => id > 0)
+  const activeIdsFiltered = useMemo(() =>
+    ((activeIds as bigint[]) || []).filter(id => id > 0n),
+    [activeIds]
+  )
 
   const { polls: trendingPolls, isLoading: loadingTrendingPolls } = useMultiplePollsData(trendingIdsFiltered)
   const { polls: activePolls, isLoading: loadingActivePolls } = useMultiplePollsData(activeIdsFiltered)
-  const { polls: completedPolls, isLoading: loadingCompletedPolls } = useMultiplePollsData(completedIdsFiltered)
 
   const handleRefresh = () => {
     refetchTrending()
     refetchActive()
-    refetchCompleted()
   }
 
-  const tabs = [
-    { id: 'trending', label: 'Trending', icon: TrendingUp, count: trendingPolls.length },
-    { id: 'active', label: 'Active', icon: Activity, count: activePolls.length },
-    { id: 'completed', label: 'Completed', icon: CheckCircle, count: completedPolls.length },
-  ]
-
-  const getCurrentPolls = () => {
-    switch (activeTab) {
-      case 'trending':
-        return trendingPolls
-      case 'active':
-        return activePolls
-      case 'completed':
-        return completedPolls
-      default:
-        return []
-    }
-  }
-
-  const isLoading = loadingTrending || loadingActive || loadingCompleted || loadingTrendingPolls || loadingActivePolls || loadingCompletedPolls
+  const hasTrendingPolls = trendingPolls.length > 0
+  const hasActivePolls = activePolls.length > 0
+  const isLoading = loadingTrending || loadingActive || loadingTrendingPolls || loadingActivePolls
 
   return (
     <div className="min-h-screen">
@@ -140,57 +118,76 @@ export default function Home() {
         {/* Status Bar */}
         <StatusBar />
 
-        {/* Tabs */}
-        <div className="flex flex-wrap gap-3 mb-8 justify-center">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-gradient-to-r from-primary to-secondary text-white'
-                    : 'glass-effect hover:bg-white/10'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span>{tab.label}</span>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  activeTab === tab.id ? 'bg-white/20' : 'bg-white/10'
-                }`}>
-                  {tab.count}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Polls Grid */}
+        {/* Loading State */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
           </div>
-        ) : getCurrentPolls().length === 0 ? (
-          <div className="glass-effect rounded-xl p-12 text-center">
-            <p className="text-gray-400 text-lg">No {activeTab} polls found</p>
-            <p className="text-gray-500 text-sm mt-2">
-              {activeTab === 'trending' && 'Polls with the most interactions will appear here'}
-              {activeTab === 'active' && 'Create a new poll to get started'}
-              {activeTab === 'completed' && 'Completed polls from the last 24 hours will appear here'}
-            </p>
-          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {getCurrentPolls().map((poll, index) => (
-              <PollCard
-                key={poll.id.toString()}
-                poll={poll}
-                type={activeTab}
-                rank={activeTab === 'trending' ? index + 1 : undefined}
-              />
-            ))}
-          </div>
+          <>
+            {/* Trending Polls Section - Only show if there are trending polls */}
+            {hasTrendingPolls && (
+              <div className="mb-12 animate-fade-in">
+                <div className="flex items-center space-x-3 mb-6">
+                  <TrendingUp className="w-6 h-6 text-orange-400" />
+                  <h2 className="text-2xl font-bold">Trending Polls</h2>
+                  <span className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded-full text-sm font-semibold">
+                    {trendingPolls.length}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {trendingPolls.map((poll, index) => (
+                    <PollCard
+                      key={`trending-${poll.id.toString()}`}
+                      poll={poll}
+                      type="trending"
+                      rank={index + 1}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Active Polls Section */}
+            {hasActivePolls && (
+              <div className={hasTrendingPolls ? 'mt-12 animate-fade-in' : 'animate-fade-in'}>
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-green-500 blur-xl opacity-50" />
+                    <div className="relative w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                  </div>
+                  <h2 className="text-2xl font-bold">
+                    {hasTrendingPolls ? 'More Active Polls' : 'Active Polls'}
+                  </h2>
+                  <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-semibold">
+                    {activePolls.length}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {activePolls.map((poll) => (
+                    <PollCard
+                      key={`active-${poll.id.toString()}`}
+                      poll={poll}
+                      type="active"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* No Polls Message */}
+            {!hasTrendingPolls && !hasActivePolls && (
+              <div className="glass-effect rounded-xl p-12 text-center animate-fade-in">
+                <Plus className="w-16 h-16 mx-auto mb-4 text-gray-600 opacity-50" />
+                <p className="text-gray-400 text-lg mb-2">No active polls yet</p>
+                <p className="text-gray-500 text-sm">
+                  {isConnected
+                    ? 'Be the first to create a poll!'
+                    : 'Connect your wallet to create a poll'}
+                </p>
+              </div>
+            )}
+          </>
         )}
       </main>
 
