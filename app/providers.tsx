@@ -13,10 +13,11 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
-      staleTime: 30000, // Cache for 30 seconds
-      gcTime: 5 * 60 * 1000, // Keep unused data for 5 minutes
+      staleTime: 60000, // Cache for 60 seconds (increased from 30)
+      gcTime: 10 * 60 * 1000, // Keep unused data for 10 minutes (increased from 5)
       refetchInterval: false,
-      refetchOnReconnect: false,
+      refetchOnReconnect: true, // Changed to true for better UX
+      refetchOnMount: false, // Prevent unnecessary refetches
     },
   },
 })

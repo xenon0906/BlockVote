@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useReadContract, usePublicClient } from 'wagmi'
 import { CONTRACT_ADDRESS } from '@/lib/config'
 import { VOTING_CONTRACT_ABI } from '@/lib/contract-abi'
@@ -21,12 +21,18 @@ export function useMultiplePollsData(pollIds: bigint[]) {
   const [isLoading, setIsLoading] = useState(true)
   const publicClient = usePublicClient()
 
+  // Create stable reference for pollIds to prevent unnecessary re-fetches
+  const pollIdsString = useMemo(() => pollIds.map(id => id.toString()).join(','), [pollIds])
+
   useEffect(() => {
     const fetchPolls = async () => {
       if (!publicClient || pollIds.length === 0) {
+        setPolls([])
         setIsLoading(false)
         return
       }
+
+      setIsLoading(true)
 
       try {
         const pollPromises = pollIds.map(async (id) => {
@@ -45,16 +51,18 @@ export function useMultiplePollsData(pollIds: bigint[]) {
         })
 
         const results = await Promise.all(pollPromises)
-        setPolls(results.filter(poll => poll !== null))
+        const validPolls = results.filter(poll => poll !== null)
+        setPolls(validPolls)
       } catch (error) {
         console.error('Error fetching polls:', error)
+        setPolls([])
       } finally {
         setIsLoading(false)
       }
     }
 
     fetchPolls()
-  }, [pollIds, publicClient])
+  }, [pollIdsString, publicClient])
 
   return { polls, isLoading }
 }

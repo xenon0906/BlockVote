@@ -40,6 +40,9 @@ export default function Home() {
     address: CONTRACT_ADDRESS,
     abi: VOTING_CONTRACT_ABI,
     functionName: 'getTrendingPolls',
+    query: {
+      refetchInterval: 30000, // Refetch every 30 seconds
+    },
   })
 
   // Fetch active poll IDs
@@ -47,6 +50,9 @@ export default function Home() {
     address: CONTRACT_ADDRESS,
     abi: VOTING_CONTRACT_ABI,
     functionName: 'getActivePolls',
+    query: {
+      refetchInterval: 30000, // Refetch every 30 seconds
+    },
   })
 
   // Fetch completed poll IDs
@@ -54,6 +60,9 @@ export default function Home() {
     address: CONTRACT_ADDRESS,
     abi: VOTING_CONTRACT_ABI,
     functionName: 'getCompletedPolls',
+    query: {
+      refetchInterval: 30000, // Refetch every 30 seconds
+    },
   })
 
   // Fetch poll data using the hook

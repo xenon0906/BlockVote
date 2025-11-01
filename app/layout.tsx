@@ -1,12 +1,19 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://blockvote.vercel.app'),
+  metadataBase: new URL('https://blockvoteapp.vercel.app'),
   title: {
     default: 'BlockVote - Decentralized Voting Platform',
     template: '%s | BlockVote'
@@ -21,6 +28,9 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'BlockVote',
+    startupImage: [
+      '/apple-touch-icon.png',
+    ],
   },
   formatDetection: {
     telephone: false,
@@ -41,7 +51,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://blockvote.vercel.app',
+    url: 'https://blockvoteapp.vercel.app',
     siteName: 'BlockVote',
     title: 'BlockVote - Decentralized Voting Platform',
     description: 'Create polls, vote transparently, and earn rewards on Ethereum blockchain',

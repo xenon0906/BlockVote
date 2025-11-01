@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useState, useEffect } from 'react'
+import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi'
 import { parseEther } from 'viem'
 import { CONTRACT_ADDRESS } from '@/lib/config'
 import { VOTING_CONTRACT_ABI } from '@/lib/contract-abi'
 import { X, Plus, Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface CreatePollModalProps {
   isOpen: boolean
@@ -14,6 +15,7 @@ interface CreatePollModalProps {
 }
 
 export default function CreatePollModal({ isOpen, onClose, onSuccess }: CreatePollModalProps) {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -22,9 +24,16 @@ export default function CreatePollModal({ isOpen, onClose, onSuccess }: CreatePo
     votingFee: '0.001',
   })
 
-  const { writeContract, data: hash, isPending } = useWriteContract()
+  const { writeContract, data: hash, isPending, reset } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
+  })
+
+  // Get current poll count to determine new poll ID
+  const { data: pollCount } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: VOTING_CONTRACT_ABI,
+    functionName: 'pollCount',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,19 +57,27 @@ export default function CreatePollModal({ isOpen, onClose, onSuccess }: CreatePo
     }
   }
 
-  if (isSuccess) {
-    setTimeout(() => {
-      onSuccess?.()
-      onClose()
-      setFormData({
-        title: '',
-        description: '',
-        duration: '7',
-        maxCandidates: '5',
-        votingFee: '0.001',
-      })
-    }, 1500)
-  }
+  useEffect(() => {
+    if (isSuccess && pollCount !== undefined) {
+      const newPollId = Number(pollCount)
+
+      setTimeout(() => {
+        onSuccess?.()
+        onClose()
+        setFormData({
+          title: '',
+          description: '',
+          duration: '7',
+          maxCandidates: '5',
+          votingFee: '0.001',
+        })
+        reset()
+
+        // Navigate to the newly created poll
+        router.push(`/poll/${newPollId}`)
+      }, 1000)
+    }
+  }, [isSuccess, pollCount, onSuccess, onClose, router, reset])
 
   if (!isOpen) return null
 

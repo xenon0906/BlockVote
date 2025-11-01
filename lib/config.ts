@@ -28,6 +28,9 @@ export const config = createConfig({
       showQrModal: true,
       qrModalOptions: {
         themeMode: 'dark',
+        themeVariables: {
+          '--wcm-z-index': '9999',
+        },
       },
     }),
     coinbaseWallet({
@@ -36,9 +39,16 @@ export const config = createConfig({
     }),
   ],
   transports: {
-    [sepolia.id]: http(),
+    [sepolia.id]: http(undefined, {
+      batch: {
+        wait: 50, // Batch requests for better performance
+      },
+      retryCount: 3,
+      timeout: 10000,
+    }),
   },
   multiInjectedProviderDiscovery: true,
+  ssr: true, // Enable SSR support
 })
 
 export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`
