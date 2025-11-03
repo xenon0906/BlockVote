@@ -115,7 +115,13 @@ export default function PollCard({
       await loadPollData();
       if (onVoteSuccess) onVoteSuccess();
     } catch (error: any) {
-      alert(error.message || 'Failed to vote');
+      const errorMessage = error.message || '';
+
+      if (errorMessage.includes('Already voted') || errorMessage.includes('already voted')) {
+        alert('You have already voted on this poll from another account in your wallet. Each wallet can only vote once per poll.');
+      } else {
+        alert(errorMessage || 'Failed to vote');
+      }
     } finally {
       setIsVoting(false);
     }
