@@ -144,34 +144,21 @@ export default function PollCard({
   const isCreator = userAddress && creator.toLowerCase() === userAddress.toLowerCase();
 
   return (
-    <div className="card">
+    <div className="card hover:shadow-xl transition-shadow duration-300">
       <div className="flex justify-between items-start mb-4">
-        <h3 className="text-lg md:text-xl font-bold text-gray-900 flex-1 mr-4">{question}</h3>
-        <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-          finalized ? 'bg-gray-200 text-gray-700' : 'bg-green-100 text-green-700'
+        <h3 className="text-lg md:text-xl font-bold text-gray-900 flex-1 mr-4 leading-tight">{question}</h3>
+        <span className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm ${
+          finalized ? 'bg-gray-100 text-gray-700 border border-gray-200' : 'bg-gradient-to-r from-green-400 to-green-500 text-white'
         }`}>
-          {finalized ? 'Ended' : timeRemaining}
+          {finalized ? 'Ended' : `⏱ ${timeRemaining}`}
         </span>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2 text-xs md:text-sm text-gray-600">
-        <div className="flex items-center space-x-1">
-          <span>Votes:</span>
-          <span className="font-semibold text-primary-600">{totalVotes.toString()}</span>
+      <div className="mb-4 flex flex-wrap gap-2 text-xs md:text-sm">
+        <div className="flex items-center space-x-1 bg-gradient-to-r from-accent-50 to-accent-100 px-3 py-1.5 rounded-full border border-accent-200">
+          <span className="text-accent-700">💰 Pool:</span>
+          <span className="font-bold text-accent-900">{formatEther(totalFunds)} ETH</span>
         </div>
-        <span className="text-gray-300">•</span>
-        <div className="flex items-center space-x-1">
-          <span>Pool:</span>
-          <span className="font-semibold text-accent-600">{formatEther(totalFunds)} ETH</span>
-        </div>
-        {hasBet && (
-          <>
-            <span className="text-gray-300">•</span>
-            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full font-medium">
-              Creator Bet
-            </span>
-          </>
-        )}
       </div>
 
       <div className="space-y-3 mb-4">
@@ -184,14 +171,14 @@ export default function PollCard({
             <div key={idx} className="relative">
               <div
                 className={`poll-option ${
-                  selectedOption === idx ? 'poll-option-selected' : ''
-                } ${isWinner ? 'border-green-500 bg-green-50' : ''} ${
-                  !finalized && !userVoted ? 'hover:scale-[1.02]' : ''
+                  selectedOption === idx ? 'poll-option-selected border-2 border-primary-500 shadow-md' : ''
+                } ${isWinner ? 'border-2 border-green-500 bg-green-50 shadow-lg' : ''} ${
+                  !finalized && !userVoted ? 'hover:scale-[1.02] hover:shadow-md cursor-pointer' : 'cursor-default'
                 }`}
                 onClick={() => !finalized && !userVoted && setSelectedOption(idx)}
               >
                 <div
-                  className="absolute inset-0 bg-gradient-to-r from-primary-100/50 to-accent-100/50 transition-all duration-300"
+                  className="absolute inset-0 bg-gradient-to-r from-primary-100/60 to-accent-100/60 transition-all duration-500 rounded-lg"
                   style={{ width: `${percentage}%` }}
                 />
                 <div className="relative flex justify-between items-center">
@@ -200,21 +187,20 @@ export default function PollCard({
                       {option.text}
                     </span>
                     {isCreatorBet && isCreator && (
-                      <span className="px-2 py-0.5 bg-yellow-200 text-yellow-800 text-xs rounded-full font-medium">
-                        Your Bet
+                      <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-200 to-yellow-300 text-yellow-900 text-xs rounded-full font-semibold shadow-sm border border-yellow-400">
+                        🎯 Your Bet
                       </span>
                     )}
                     {isWinner && (
-                      <span className="px-2 py-0.5 bg-green-200 text-green-800 text-xs rounded-full font-medium">
-                        Winner
+                      <span className="px-2 py-0.5 bg-gradient-to-r from-green-200 to-green-300 text-green-900 text-xs rounded-full font-semibold shadow-sm border border-green-400">
+                        🏆 Winner
                       </span>
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-primary-700 text-sm md:text-base">
+                    <div className="font-bold text-primary-700 text-base md:text-lg">
                       {percentage}%
                     </div>
-                    <div className="text-xs text-gray-500">{option.votes} votes</div>
                   </div>
                 </div>
               </div>
@@ -227,21 +213,21 @@ export default function PollCard({
         <button
           onClick={handleVote}
           disabled={selectedOption === null || isVoting}
-          className="btn-primary w-full text-sm md:text-base"
+          className="btn-primary w-full text-sm md:text-base shadow-lg hover:shadow-xl transition-shadow"
         >
-          {isVoting ? 'Voting...' : `Vote (${formatEther(BigInt('1000000000000000'))} ETH)`}
+          {isVoting ? '⏳ Voting...' : `✅ Vote (${formatEther(BigInt('1000000000000000'))} ETH)`}
         </button>
       )}
 
       {userVoted && !finalized && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-          <p className="text-blue-700 font-medium text-sm md:text-base">You voted on this poll</p>
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-3 text-center shadow-sm">
+          <p className="text-blue-800 font-semibold text-sm md:text-base">✓ You voted on this poll</p>
         </div>
       )}
 
       {!userAddress && !finalized && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
-          <p className="text-gray-600 text-sm md:text-base">Connect wallet to vote</p>
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-300 rounded-lg p-3 text-center shadow-sm">
+          <p className="text-gray-700 font-medium text-sm md:text-base">🔒 Connect wallet to vote</p>
         </div>
       )}
     </div>

@@ -7,6 +7,7 @@ import { connectWallet, formatAddress } from '@/utils/wallet';
 export default function Header() {
   const [address, setAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     checkConnection();
@@ -16,12 +17,24 @@ export default function Header() {
       window.ethereum.on('chainChanged', () => window.location.reload());
     }
 
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.wallet-dropdown')) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
     return () => {
       if (typeof window !== 'undefined' && window.ethereum) {
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
+      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [showDropdown]);
 
   const checkConnection = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
@@ -58,6 +71,12 @@ export default function Header() {
     }
   };
 
+  const handleDisconnect = () => {
+    setAddress(null);
+    setShowDropdown(false);
+    window.location.reload();
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -85,11 +104,33 @@ export default function Header() {
 
           <div className="flex items-center space-x-2 md:space-x-4">
             {address ? (
-              <div className="flex items-center space-x-2 bg-gradient-to-r from-primary-50 to-accent-50 px-3 md:px-4 py-2 rounded-lg border border-primary-200">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-xs md:text-sm font-medium text-primary-900">
-                  {formatAddress(address)}
-                </span>
+              <div className="relative wallet-dropdown">
+                <button
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  className="flex items-center space-x-2 bg-gradient-to-r from-primary-50 to-accent-50 px-3 md:px-4 py-2 rounded-lg border border-primary-200 hover:border-primary-300 transition-all"
+                >
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs md:text-sm font-medium text-primary-900">
+                    {formatAddress(address)}
+                  </span>
+                  <svg className={`w-4 h-4 text-primary-600 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                    <div className="px-4 py-2 border-b border-gray-100">
+                      <p className="text-xs text-gray-500">Connected</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{address}</p>
+                    </div>
+                    <button
+                      onClick={handleDisconnect}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <button
