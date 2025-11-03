@@ -1,0 +1,584 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_platformWallet",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "pollId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "creator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "question",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "duration",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "optionCount",
+        "type": "uint256"
+      }
+    ],
+    "name": "PollCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "pollId",
+        "type": "uint256"
+      }
+    ],
+    "name": "PollDeleted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "pollId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "winningOption",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "creatorPayout",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "platformPayout",
+        "type": "uint256"
+      }
+    ],
+    "name": "PollFinalized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "pollId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "voter",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "optionIndex",
+        "type": "uint256"
+      }
+    ],
+    "name": "VoteCast",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "CLEANUP_DELAY",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_POLL_DURATION",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "POLL_CREATION_FEE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "VOTE_COST",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_question",
+        "type": "string"
+      },
+      {
+        "internalType": "string[]",
+        "name": "_options",
+        "type": "string[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_betOptionIndex",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "_hasBet",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_durationInHours",
+        "type": "uint256"
+      }
+    ],
+    "name": "createPoll",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_pollId",
+        "type": "uint256"
+      }
+    ],
+    "name": "deletePoll",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_pollId",
+        "type": "uint256"
+      }
+    ],
+    "name": "finalizePoll",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_limit",
+        "type": "uint256"
+      }
+    ],
+    "name": "getActivePolls",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_limit",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCompletedPolls",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_pollId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "_requester",
+        "type": "address"
+      }
+    ],
+    "name": "getCreatorBetOption",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_pollId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPoll",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "question",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "creator",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "createdAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expiresAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "finalized",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalVotes",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalFunds",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "hasBet",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_pollId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPollOptions",
+    "outputs": [
+      {
+        "internalType": "string[]",
+        "name": "",
+        "type": "string[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getPollsReadyForCleanup",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_user",
+        "type": "address"
+      }
+    ],
+    "name": "getUserPolls",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_pollId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "_voter",
+        "type": "address"
+      }
+    ],
+    "name": "hasVoted",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "platformWallet",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pollCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "polls",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "question",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "creator",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "createdAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expiresAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "finalizedAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "finalized",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "deleted",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalVotes",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalFunds",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "betOptionIndex",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "hasBet",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "duration",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "userPolls",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_pollId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_optionIndex",
+        "type": "uint256"
+      }
+    ],
+    "name": "vote",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  }
+]
