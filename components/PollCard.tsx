@@ -158,13 +158,15 @@ export default function PollCard({
   const isCreator = userAddress && creator.toLowerCase() === userAddress.toLowerCase();
 
   return (
-    <div className="card hover:shadow-xl transition-shadow duration-300">
+    <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 hover:shadow-2xl hover:border-purple-200 transition-all duration-300">
       <div className="flex justify-between items-start mb-4">
         <h3 className="text-lg md:text-xl font-bold text-gray-900 flex-1 mr-4 leading-tight">{question}</h3>
-        <span className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm ${
-          finalized ? 'bg-gray-100 text-gray-700 border border-gray-200' : 'bg-gradient-to-r from-green-400 to-green-500 text-white'
+        <span className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md ${
+          finalized
+            ? 'bg-gray-100 text-gray-700 border border-gray-300'
+            : 'bg-gradient-to-r from-emerald-400 to-green-500 text-white'
         }`}>
-          {finalized ? 'Ended' : `⏱ ${timeRemaining}`}
+          {finalized ? '✓ Ended' : `⏱ ${timeRemaining}`}
         </span>
       </div>
 
@@ -194,40 +196,44 @@ export default function PollCard({
           return (
             <div key={idx} className="relative">
               <div
-                className={`poll-option ${
-                  selectedOption === idx ? 'poll-option-selected border-2 border-primary-500 shadow-md' : ''
-                } ${isWinner ? 'border-2 border-green-500 bg-green-50 shadow-lg' : ''} ${
-                  !finalized && !userVoted ? 'hover:scale-[1.02] hover:shadow-md cursor-pointer' : 'cursor-default'
+                className={`relative overflow-hidden bg-gradient-to-r from-gray-50 to-white rounded-xl border-2 transition-all duration-300 ${
+                  selectedOption === idx
+                    ? 'border-purple-500 shadow-lg shadow-purple-200'
+                    : isWinner
+                    ? 'border-green-500 shadow-lg shadow-green-200'
+                    : 'border-gray-200 hover:border-purple-300'
+                } ${
+                  !finalized && !userVoted ? 'hover:shadow-md cursor-pointer' : 'cursor-default'
                 }`}
                 onClick={() => !finalized && !userVoted && setSelectedOption(idx)}
               >
                 <div
-                  className="absolute inset-0 bg-gradient-to-r from-primary-100/60 to-accent-100/60 transition-all duration-500 rounded-lg"
+                  className="absolute inset-0 bg-gradient-to-r from-purple-100/70 to-blue-100/70 transition-all duration-700"
                   style={{ width: `${percentage}%` }}
                 />
-                <div className="relative flex justify-between items-center">
+                <div className="relative flex justify-between items-center p-4">
                   <div className="flex items-center space-x-2 flex-1">
-                    <span className="font-medium text-gray-900 text-sm md:text-base">
+                    <span className="font-semibold text-gray-900 text-sm md:text-base">
                       {option.text}
                     </span>
                     {isCreatorBet && isCreator && (
-                      <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-200 to-yellow-300 text-yellow-900 text-xs rounded-full font-semibold shadow-sm border border-yellow-400">
+                      <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-200 to-yellow-300 text-yellow-900 text-xs rounded-full font-bold shadow-sm border border-yellow-400">
                         🎯 Your Bet
                       </span>
                     )}
                     {isWinner && (
-                      <span className="px-2 py-0.5 bg-gradient-to-r from-green-200 to-green-300 text-green-900 text-xs rounded-full font-semibold shadow-sm border border-green-400">
+                      <span className="px-2 py-0.5 bg-gradient-to-r from-green-200 to-green-300 text-green-900 text-xs rounded-full font-bold shadow-sm border border-green-400">
                         🏆 Winner
                       </span>
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-bold text-primary-700 text-base md:text-lg">
+                    <div className="flex flex-col items-end">
+                      <span className="font-black text-purple-700 text-lg md:text-xl">
                         {percentage}%
                       </span>
-                      <span className="text-xs md:text-sm text-gray-500 font-medium">
-                        ({option.votes} votes)
+                      <span className="text-xs text-gray-500 font-medium">
+                        {option.votes} {option.votes === 1 ? 'vote' : 'votes'}
                       </span>
                     </div>
                   </div>
@@ -242,21 +248,34 @@ export default function PollCard({
         <button
           onClick={handleVote}
           disabled={selectedOption === null || isVoting}
-          className="btn-primary w-full text-sm md:text-base shadow-lg hover:shadow-xl transition-shadow"
+          className="relative group w-full"
         >
-          {isVoting ? '⏳ Voting...' : `✅ Vote (${formatEther(BigInt('1000000000000000'))} ETH)`}
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-blue-600 rounded-xl blur opacity-75 group-hover:opacity-100 transition-opacity"></div>
+          <div className="relative bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold text-sm md:text-base py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all">
+            {isVoting ? '⏳ Submitting Vote...' : `🗳️ Cast Your Vote (${formatEther(BigInt('1000000000000000'))} ETH)`}
+          </div>
         </button>
       )}
 
       {userVoted && !finalized && (
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-3 text-center shadow-sm">
-          <p className="text-blue-800 font-semibold text-sm md:text-base">✓ You voted on this poll</p>
+        <div className="bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-300 rounded-xl p-4 text-center shadow-lg">
+          <p className="text-emerald-800 font-bold text-sm md:text-base flex items-center justify-center space-x-2">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            <span>Your vote has been recorded!</span>
+          </p>
         </div>
       )}
 
       {!userAddress && !finalized && (
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-300 rounded-lg p-3 text-center shadow-sm">
-          <p className="text-gray-700 font-medium text-sm md:text-base">🔒 Connect wallet to vote</p>
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-300 rounded-xl p-4 text-center shadow-md">
+          <p className="text-gray-700 font-semibold text-sm md:text-base flex items-center justify-center space-x-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span>Connect wallet to participate</span>
+          </p>
         </div>
       )}
     </div>

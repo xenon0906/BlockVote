@@ -19,7 +19,7 @@ export default function HowItWorks() {
           How BlockVote Works
         </h1>
         <p className="text-lg text-gray-600 mb-12">
-          Blockchain-powered polling with optional betting. Transparent, secure, and decentralized.
+          Decentralized polling platform where every voice matters. Transparent, secure, and community-driven.
         </p>
 
         <div className="space-y-12">
