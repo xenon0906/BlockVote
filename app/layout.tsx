@@ -2,10 +2,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BlockVote - Decentralized Polling Platform',
-  description: 'Create and vote on polls using blockchain technology',
+  title: 'BlockVote',
+  description: 'Blockchain polling platform',
   icons: {
-    icon: '/favicon.ico',
+    icon: '/favicon.svg',
   },
 };
 
