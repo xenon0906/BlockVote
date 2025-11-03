@@ -107,13 +107,18 @@ export default function Home() {
   };
 
   const getTrendingPolls = () => {
+    if (activePolls.length < 9) return [];
     return [...activePolls]
       .sort((a, b) => Number(b.totalVotes) - Number(a.totalVotes))
       .slice(0, 3);
   };
 
   const trendingPolls = getTrendingPolls();
-  const displayPolls = activeTab === 'active' ? activePolls : completedPolls;
+  const trendingPollIds = new Set(trendingPolls.map(p => p.id));
+
+  const displayPolls = activeTab === 'active'
+    ? activePolls.filter(poll => !trendingPollIds.has(poll.id))
+    : completedPolls;
 
   return (
     <div className="min-h-screen">

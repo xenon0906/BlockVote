@@ -140,7 +140,21 @@ export default function PollCard({
     return winningIdx;
   };
 
+  const getWinningMargin = () => {
+    if (!finalized || options.length === 0) return null;
+
+    const sortedOptions = [...options].sort((a, b) => b.votes - a.votes);
+    if (sortedOptions.length < 2) return null;
+
+    const winnerVotes = sortedOptions[0].votes;
+    const runnerUpVotes = sortedOptions[1].votes;
+    const margin = winnerVotes - runnerUpVotes;
+
+    return margin;
+  };
+
   const winningOption = getWinningOption();
+  const winningMargin = getWinningMargin();
   const isCreator = userAddress && creator.toLowerCase() === userAddress.toLowerCase();
 
   return (
@@ -154,12 +168,22 @@ export default function PollCard({
         </span>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2 text-xs md:text-sm">
-        <div className="flex items-center space-x-1 bg-gradient-to-r from-accent-50 to-accent-100 px-3 py-1.5 rounded-full border border-accent-200">
-          <span className="text-accent-700">💰 Pool:</span>
-          <span className="font-bold text-accent-900">{formatEther(totalFunds)} ETH</span>
+      {finalized && winningMargin !== null && (
+        <div className="mb-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3">
+          <p className="text-sm font-semibold text-green-800">
+            🏆 Won by <span className="text-green-900 font-bold">{winningMargin}</span> vote{winningMargin !== 1 ? 's' : ''}
+          </p>
         </div>
-      </div>
+      )}
+
+      {isCreator && (
+        <div className="mb-4 flex flex-wrap gap-2 text-xs md:text-sm">
+          <div className="flex items-center space-x-1 bg-gradient-to-r from-accent-50 to-accent-100 px-3 py-1.5 rounded-full border border-accent-200">
+            <span className="text-accent-700">💰 Pool:</span>
+            <span className="font-bold text-accent-900">{formatEther(totalFunds)} ETH</span>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3 mb-4">
         {options.map((option, idx) => {
@@ -198,8 +222,13 @@ export default function PollCard({
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-primary-700 text-base md:text-lg">
-                      {percentage}%
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-primary-700 text-base md:text-lg">
+                        {percentage}%
+                      </span>
+                      <span className="text-xs md:text-sm text-gray-500 font-medium">
+                        ({option.votes} votes)
+                      </span>
                     </div>
                   </div>
                 </div>
