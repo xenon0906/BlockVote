@@ -1,0 +1,38 @@
+====================================
+COPY THESE TO VERCEL EXACTLY
+====================================
+
+When you import to Vercel, add these 4 environment variables:
+
+-------------------------------------
+Variable 1:
+-------------------------------------
+Name: SEPOLIA_RPC_URL
+Value: https://sepolia.infura.io/v3/fa1bc77a7a51446e9e0921d7dd313ee1
+
+-------------------------------------
+Variable 2:
+-------------------------------------
+Name: NEXT_PUBLIC_SEPOLIA_RPC_URL
+Value: https://sepolia.infura.io/v3/fa1bc77a7a51446e9e0921d7dd313ee1
+
+-------------------------------------
+Variable 3:
+-------------------------------------
+Name: NEXT_PUBLIC_CONTRACT_ADDRESS
+Value: [PASTE CONTRACT ADDRESS FROM DEPLOYMENT]
+
+-------------------------------------
+Variable 4:
+-------------------------------------
+Name: NEXT_PUBLIC_PLATFORM_WALLET
+Value: 0x5ce89d95b7222b3f44873cafa7166f5915b2abce
+
+====================================
+
+IMPORTANT NOTES:
+- Add to ALL environments (Production, Preview, Development)
+- Variable 3: You'll get this AFTER running "npm run deploy"
+- DO NOT add PRIVATE_KEY to Vercel (security risk!)
+
+====================================
