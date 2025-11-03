@@ -255,11 +255,11 @@ export default function PollCard({
         <button
           onClick={handleVote}
           disabled={selectedOption === null || isVoting}
-          className="relative group w-full"
+          className={`relative w-full group ${selectedOption === null ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-blue-600 rounded-xl blur opacity-75 group-hover:opacity-100 transition-opacity"></div>
-          <div className="relative bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold text-sm md:text-base py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all">
-            {isVoting ? '⏳ Submitting Vote...' : `🗳️ Cast Your Vote (${formatEther(BigInt('1000000000000000'))} ETH)`}
+          <div className={`absolute inset-0 bg-gradient-to-r from-purple-500 to-blue-600 rounded-xl blur transition-opacity ${selectedOption === null ? 'opacity-50' : 'opacity-75 group-hover:opacity-100'}`}></div>
+          <div className={`relative bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold text-sm md:text-base py-3 rounded-xl shadow-lg transition-all ${selectedOption !== null && !isVoting ? 'hover:shadow-xl hover:scale-[1.02]' : ''}`}>
+            {isVoting ? '⏳ Submitting Vote...' : selectedOption === null ? '🗳️ Select an option to vote' : `🗳️ Cast Your Vote (${formatEther(BigInt('1000000000000000'))} ETH)`}
           </div>
         </button>
       )}
