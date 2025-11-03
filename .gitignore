@@ -12,3 +12,7 @@ cache
 typechain-types
 coverage
 coverage.json
+.claude
+.cursor
+.vscode
+.idea

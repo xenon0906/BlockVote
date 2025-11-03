@@ -1,0 +1,10 @@
+cache
+artifacts
+test
+coverage
+*.log
+.env
+.env.local
+node_modules
+README.md
+DEPLOYMENT.md
