@@ -78,9 +78,11 @@ export default function Home() {
 
   const loadPolls = async () => {
     try {
+      console.log('🔍 Starting to load polls...');
       const provider = new ethers.JsonRpcProvider(
         process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/'
       );
+      console.log('✅ Provider created');
 
       const [activeIds, completedIds, totalVotes] = await Promise.all([
         getActivePolls(provider, 50),
@@ -88,45 +90,69 @@ export default function Home() {
         getTotalPlatformVotes(provider),
       ]);
 
+      console.log('📊 Poll IDs loaded:', {
+        activeIds: activeIds.map((id: bigint) => Number(id)),
+        completedIds: completedIds.map((id: bigint) => Number(id)),
+        totalVotes: Number(totalVotes)
+      });
+
       const activeData = await Promise.all(
         activeIds.map(async (id: bigint) => {
-          const data = await getPoll(provider, Number(id));
-          return {
-            id: Number(data[0]),
-            question: data[1],
-            creator: data[2],
-            createdAt: data[3],
-            expiresAt: data[4],
-            finalized: data[5],
-            totalVotes: data[6],
-            totalFunds: data[7],
-            hasBet: data[8],
-          };
+          try {
+            const data = await getPoll(provider, Number(id));
+            console.log(`✅ Loaded active poll ${Number(id)}:`, data[1]); // Log question
+            return {
+              id: Number(data[0]),
+              question: data[1],
+              creator: data[2],
+              createdAt: data[3],
+              expiresAt: data[4],
+              finalized: data[5],
+              totalVotes: data[6],
+              totalFunds: data[7],
+              hasBet: data[8],
+            };
+          } catch (err) {
+            console.error(`❌ Failed to load active poll ${Number(id)}:`, err);
+            return null;
+          }
         })
       );
 
       const completedData = await Promise.all(
         completedIds.map(async (id: bigint) => {
-          const data = await getPoll(provider, Number(id));
-          return {
-            id: Number(data[0]),
-            question: data[1],
-            creator: data[2],
-            createdAt: data[3],
-            expiresAt: data[4],
-            finalized: data[5],
-            totalVotes: data[6],
-            totalFunds: data[7],
-            hasBet: data[8],
-          };
+          try {
+            const data = await getPoll(provider, Number(id));
+            console.log(`✅ Loaded completed poll ${Number(id)}:`, data[1]); // Log question
+            return {
+              id: Number(data[0]),
+              question: data[1],
+              creator: data[2],
+              createdAt: data[3],
+              expiresAt: data[4],
+              finalized: data[5],
+              totalVotes: data[6],
+              totalFunds: data[7],
+              hasBet: data[8],
+            };
+          } catch (err) {
+            console.error(`❌ Failed to load completed poll ${Number(id)}:`, err);
+            return null;
+          }
         })
       );
 
-      setActivePolls(activeData);
-      setCompletedPolls(completedData);
+      const filteredActive = activeData.filter((p): p is Poll => p !== null);
+      const filteredCompleted = completedData.filter((p): p is Poll => p !== null);
+
+      console.log(`✅ Successfully loaded ${filteredActive.length} active polls and ${filteredCompleted.length} completed polls`);
+
+      setActivePolls(filteredActive);
+      setCompletedPolls(filteredCompleted);
       setTotalPlatformVotes(Number(totalVotes));
     } catch (error) {
-      console.error('Error loading polls:', error);
+      console.error('❌ CRITICAL ERROR loading polls:', error);
+      alert(`Failed to load polls: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
