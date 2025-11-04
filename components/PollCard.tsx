@@ -430,17 +430,55 @@ export default function PollCard({
         })}
       </div>
 
+      {finalized && isCreator && hasBet && (
+        <div className="mb-4">
+          {winningOption !== null && creatorBetOption !== null && winningOption === creatorBetOption ? (
+            <div className="bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-400 rounded-xl p-4 sm:p-5 shadow-lg">
+              <p className="text-emerald-800 font-bold text-base sm:text-lg md:text-xl flex items-center justify-center gap-2 sm:gap-3 mb-2">
+                <svg className="w-6 h-6 sm:w-7 sm:h-7 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd" />
+                </svg>
+                <span>🎉 You Won! Reward Claimed</span>
+              </p>
+              <p className="text-emerald-700 text-xs sm:text-sm text-center leading-relaxed">
+                You bet correctly on "{options[winningOption]?.text}"! 90% of the voting pool ({formatEther(totalFunds * BigInt(90) / BigInt(100))} ETH) was automatically sent to your wallet.
+              </p>
+            </div>
+          ) : creatorBetOption !== null && (
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-300 rounded-xl p-4 sm:p-5">
+              <p className="text-gray-700 font-semibold text-sm sm:text-base text-center flex items-center justify-center gap-2">
+                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span>Your bet was incorrect</span>
+              </p>
+              <p className="text-gray-600 text-xs sm:text-sm text-center mt-2">
+                You bet on "{options[creatorBetOption]?.text}" but "{options[winningOption || 0]?.text}" won. Funds went to platform wallet.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {!finalized && timeRemaining === 'Ended' && userAddress && (
-        <button
-          onClick={handleFinalize}
-          disabled={isFinalizing}
-          className={`relative w-full group touch-manipulation min-h-[56px] sm:min-h-[64px] mb-4 ${isFinalizing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-[0.98]'}`}
-        >
-          <div className={`absolute inset-0 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-xl blur transition-opacity ${isFinalizing ? 'opacity-50' : 'opacity-75 group-active:opacity-100'}`}></div>
-          <div className={`relative bg-gradient-to-r from-yellow-600 to-amber-600 text-white font-bold text-base sm:text-lg md:text-xl py-4 sm:py-5 px-4 rounded-xl shadow-lg transition-all ${!isFinalizing ? 'active:shadow-2xl' : ''}`}>
-            {isFinalizing ? '⏳ Finalizing Poll...' : (isCreator && hasBet ? '🎁 Finalize & Claim Reward' : '✓ Finalize Poll Results')}
-          </div>
-        </button>
+        <div className="mb-4">
+          <button
+            onClick={handleFinalize}
+            disabled={isFinalizing}
+            className={`relative w-full group touch-manipulation min-h-[56px] sm:min-h-[64px] ${isFinalizing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-[0.98]'}`}
+          >
+            <div className={`absolute inset-0 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-xl blur transition-opacity ${isFinalizing ? 'opacity-50' : 'opacity-75 group-active:opacity-100'}`}></div>
+            <div className={`relative bg-gradient-to-r from-yellow-600 to-amber-600 text-white font-bold text-base sm:text-lg md:text-xl py-4 sm:py-5 px-4 rounded-xl shadow-lg transition-all ${!isFinalizing ? 'active:shadow-2xl' : ''}`}>
+              {isFinalizing ? '⏳ Finalizing & Processing Payouts...' : (isCreator && hasBet ? '🎁 Finalize & Auto-Claim Reward (90%)' : '✓ Finalize Poll Results')}
+            </div>
+          </button>
+          {isCreator && hasBet && (
+            <p className="text-xs sm:text-sm text-center text-gray-600 mt-2">
+              💰 If you bet correctly, 90% of voting funds will be sent to your wallet automatically
+            </p>
+          )}
+        </div>
       )}
 
       {finalizeError && !finalized && (
@@ -539,19 +577,19 @@ export default function PollCard({
                   <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Delete Poll?</h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Clean Up Poll?</h3>
               <p className="text-gray-600 text-sm sm:text-base mb-4">
-                Are you sure you want to delete this poll?
+                This will permanently remove the poll from the platform after the 24-hour display period.
               </p>
-              <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-6">
-                <p className="text-red-800 font-bold text-sm sm:text-base mb-2 flex items-center justify-center gap-2">
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
+                <p className="text-blue-800 font-bold text-sm sm:text-base mb-2 flex items-center justify-center gap-2">
                   <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                   </svg>
-                  <span>Warning: No Refund</span>
+                  <span>Poll Already Finalized</span>
                 </p>
-                <p className="text-red-700 text-xs sm:text-sm leading-relaxed">
-                  All funds in this poll will go to the platform. You will not receive any refund for your bet or creation fee.
+                <p className="text-blue-700 text-xs sm:text-sm leading-relaxed">
+                  Results are finalized and all payouts have been processed. This is just cleanup to remove the poll from display.
                 </p>
               </div>
             </div>
