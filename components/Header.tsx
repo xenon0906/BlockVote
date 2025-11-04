@@ -102,16 +102,18 @@ export default function Header() {
         <div className="flex justify-between items-center h-16 md:h-20">
           <Link href="/" className="flex items-center space-x-3 group">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl blur-md group-hover:blur-lg transition-all"></div>
-              <div className="relative w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg transform group-hover:scale-105 transition-transform">
-                <span className="text-white font-black text-xl md:text-2xl">B</span>
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-2xl blur-lg group-hover:blur-xl transition-all animate-pulse"></div>
+              <div className="relative w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-2xl transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                <span className="text-white font-black text-xl md:text-2xl drop-shadow-lg">🗳️</span>
               </div>
             </div>
             <div className="flex flex-col">
-              <h1 className="text-xl md:text-2xl lg:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 tracking-tight">
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 tracking-tight group-hover:from-pink-400 group-hover:via-purple-400 group-hover:to-blue-400 transition-all duration-500">
                 BlockVote
               </h1>
-              <p className="text-xs text-purple-300 font-medium hidden sm:block">Decentralized Polling</p>
+              <p className="text-xs text-purple-300 font-semibold hidden sm:block group-hover:text-pink-300 transition-colors">
+                ⚡ Powered by Blockchain
+              </p>
             </div>
           </Link>
 

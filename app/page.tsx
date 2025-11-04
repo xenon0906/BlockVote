@@ -139,26 +139,32 @@ export default function Home() {
     ? activePolls.filter(poll => !trendingPollIds.has(poll.id))
     : completedPolls;
 
+  const handleRefresh = () => {
+    setLoading(true);
+    loadPolls();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50">
       <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        <div className="mb-12">
-          <div className="flex flex-col items-center text-center mb-8">
-            <div className="inline-block mb-4">
+      {/* Hero Section - Full viewport height */}
+      <section className="min-h-[calc(100vh-5rem)] flex items-center justify-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+          <div className="flex flex-col items-center text-center mb-12">
+            <div className="inline-block mb-6">
               <div className="flex items-center space-x-2 bg-gradient-to-r from-blue-100 to-purple-100 px-4 py-2 rounded-full border border-purple-200">
                 <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
                 <span className="text-sm font-semibold text-purple-700">Live on Sepolia</span>
               </div>
             </div>
-            <h2 className="text-3xl md:text-5xl lg:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 mb-4 leading-tight">
+            <h2 className="text-4xl md:text-5xl lg:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 mb-6 leading-tight">
               Your Voice. Your Choice.
             </h2>
-            <p className="text-gray-600 text-base md:text-lg max-w-2xl mb-6">
+            <p className="text-gray-600 text-lg md:text-xl max-w-3xl mb-8">
               Decentralized polling powered by blockchain. Every vote counts, every opinion matters.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="relative group"
@@ -181,25 +187,47 @@ export default function Home() {
                 </div>
               )}
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 text-center transform hover:scale-105 transition-all">
-              <div className="text-4xl mb-3">🗳️</div>
-              <h3 className="font-bold text-gray-900 text-lg mb-2">Vote Freely</h3>
-              <p className="text-gray-600 text-sm">Participate in polls that matter to you. Every vote is recorded on-chain.</p>
-            </div>
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 text-center transform hover:scale-105 transition-all">
-              <div className="text-4xl mb-3">🔒</div>
-              <h3 className="font-bold text-gray-900 text-lg mb-2">Transparent</h3>
-              <p className="text-gray-600 text-sm">All votes are public and verifiable on the blockchain. No manipulation.</p>
-            </div>
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 text-center transform hover:scale-105 transition-all">
-              <div className="text-4xl mb-3">⚡</div>
-              <h3 className="font-bold text-gray-900 text-lg mb-2">Instant Results</h3>
-              <p className="text-gray-600 text-sm">See live results as votes come in. Real-time updates for every poll.</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto w-full">
+              <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
+                <div className="text-5xl mb-4">🗳️</div>
+                <h3 className="font-bold text-gray-900 text-xl mb-3">Vote Freely</h3>
+                <p className="text-gray-600 text-base">Participate in polls that matter to you. Every vote is recorded on-chain.</p>
+              </div>
+              <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
+                <div className="text-5xl mb-4">🔒</div>
+                <h3 className="font-bold text-gray-900 text-xl mb-3">Transparent</h3>
+                <p className="text-gray-600 text-base">All votes are public and verifiable on the blockchain. No manipulation.</p>
+              </div>
+              <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
+                <div className="text-5xl mb-4">⚡</div>
+                <h3 className="font-bold text-gray-900 text-xl mb-3">Instant Results</h3>
+                <p className="text-gray-600 text-base">See live results as votes come in. Real-time updates for every poll.</p>
+              </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Polls Section */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        {/* Refresh Button */}
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center space-x-2 bg-white hover:bg-gray-50 text-gray-700 font-semibold px-4 py-2.5 rounded-xl shadow-lg border border-gray-200 hover:border-purple-300 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg
+              className={`w-5 h-5 text-purple-600 ${loading ? 'animate-spin' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
         </div>
 
         {trendingPolls.length > 0 && activeTab === 'active' && (
