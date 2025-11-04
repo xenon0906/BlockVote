@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { vote, getPollOptions, hasVoted, getCreatorBetOption, finalizePoll, getPollExtended, deletePoll } from '@/utils/contract';
+import { vote, getPollOptions, hasVoted, getCreatorBetOption, finalizePoll, getPollExtended } from '@/utils/contract';
 import { getSigner, formatEther } from '@/utils/wallet';
 import { votingLimiter, getClientIdentifier, formatTimeRemaining } from '@/utils/rateLimit';
 
@@ -43,18 +43,11 @@ export default function PollCard({
   const [finalizedAt, setFinalizedAt] = useState<bigint | null>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
-  const [timeUntilCleanup, setTimeUntilCleanup] = useState<string>('');
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     loadPollData();
     const interval = setInterval(() => {
       updateTimeRemaining();
-      if (finalized && finalizedAt) {
-        updateCleanupTime();
-      }
     }, 1000);
     return () => clearInterval(interval);
   }, [pollId, userAddress, finalized, finalizedAt]);
@@ -125,29 +118,6 @@ export default function PollCard({
     }
   };
 
-  const updateCleanupTime = () => {
-    if (!finalizedAt) return;
-
-    const now = Math.floor(Date.now() / 1000);
-    const finalized = Number(finalizedAt);
-    const cleanupTime = finalized + (24 * 60 * 60); // 24 hours
-    const remaining = cleanupTime - now;
-
-    if (remaining <= 0) {
-      setTimeUntilCleanup('Expiring soon');
-      return;
-    }
-
-    const hours = Math.floor(remaining / 3600);
-    const minutes = Math.floor((remaining % 3600) / 60);
-
-    if (hours > 0) {
-      setTimeUntilCleanup(`${hours}h ${minutes}m remaining`);
-    } else {
-      setTimeUntilCleanup(`${minutes}m remaining`);
-    }
-  };
-
   const handleFinalize = async () => {
     if (!userAddress) {
       setFinalizeError('Please connect your wallet to finalize');
@@ -178,41 +148,6 @@ export default function PollCard({
       }
     } finally {
       setIsFinalizing(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!userAddress || !isCreator) return;
-
-    setIsDeleting(true);
-    setDeleteError(null);
-
-    try {
-      const signer = await getSigner();
-      if (!signer) {
-        setDeleteError('Please connect your wallet');
-        setIsDeleting(false);
-        return;
-      }
-
-      await deletePoll(signer, pollId);
-      if (onVoteSuccess) onVoteSuccess();
-      setShowDeleteConfirm(false);
-    } catch (error: any) {
-      console.error('Error deleting poll:', error);
-      const errorMsg = error.message || 'Unknown error';
-      if (errorMsg.includes('Cleanup delay not passed')) {
-        setDeleteError('Poll can only be deleted 24 hours after finalization');
-      } else if (errorMsg.includes('Poll not finalized')) {
-        setDeleteError('Poll must be finalized before deletion');
-      } else if (errorMsg.includes('user rejected') || errorMsg.includes('User denied')) {
-        setDeleteError('Transaction was rejected');
-      } else if (errorMsg.includes('Already deleted')) {
-        setDeleteError('Poll has already been deleted');
-      } else {
-        setDeleteError(`Failed to delete: ${errorMsg}`);
-      }
-      setIsDeleting(false);
     }
   };
 
@@ -321,22 +256,6 @@ export default function PollCard({
       <div className="flex justify-between items-start mb-4 sm:mb-5">
         <div className="flex-1 mr-3 sm:mr-4">
           <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 leading-tight mb-2">{question}</h3>
-          {isCreator && finalized && finalizedAt && (
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              disabled={!finalizedAt || (Date.now() / 1000) < (Number(finalizedAt) + 24 * 60 * 60)}
-              className={`text-xs sm:text-sm font-semibold underline flex items-center gap-1 touch-manipulation ${
-                finalizedAt && (Date.now() / 1000) >= (Number(finalizedAt) + 24 * 60 * 60)
-                  ? 'text-red-600 hover:text-red-800 cursor-pointer'
-                  : 'text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              {finalizedAt && (Date.now() / 1000) >= (Number(finalizedAt) + 24 * 60 * 60) ? 'Delete Poll' : `Delete in ${timeUntilCleanup}`}
-            </button>
-          )}
         </div>
         <span className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap shadow-md flex-shrink-0 ${
           finalized
@@ -461,7 +380,7 @@ export default function PollCard({
         </div>
       )}
 
-      {!finalized && timeRemaining === 'Ended' && userAddress && (
+      {!finalized && timeRemaining === 'Ended' && isCreator && userAddress && (
         <div className="mb-4">
           <button
             onClick={handleFinalize}
@@ -470,10 +389,10 @@ export default function PollCard({
           >
             <div className={`absolute inset-0 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-xl blur transition-opacity ${isFinalizing ? 'opacity-50' : 'opacity-75 group-active:opacity-100'}`}></div>
             <div className={`relative bg-gradient-to-r from-yellow-600 to-amber-600 text-white font-bold text-base sm:text-lg md:text-xl py-4 sm:py-5 px-4 rounded-xl shadow-lg transition-all ${!isFinalizing ? 'active:shadow-2xl' : ''}`}>
-              {isFinalizing ? '⏳ Finalizing & Processing Payouts...' : (isCreator && hasBet ? '🎁 Finalize & Auto-Claim Reward (90%)' : '✓ Finalize Poll Results')}
+              {isFinalizing ? '⏳ Finalizing & Processing Payouts...' : (hasBet ? '🎁 Finalize & Claim Reward (90%)' : '✓ Finalize Poll Results')}
             </div>
           </button>
-          {isCreator && hasBet && (
+          {hasBet && (
             <p className="text-xs sm:text-sm text-center text-gray-600 mt-2">
               💰 If you bet correctly, 90% of voting funds will be sent to your wallet automatically
             </p>
@@ -567,59 +486,6 @@ export default function PollCard({
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Clean Up Poll?</h3>
-              <p className="text-gray-600 text-sm sm:text-base mb-4">
-                This will permanently remove the poll from the platform after the 24-hour display period.
-              </p>
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
-                <p className="text-blue-800 font-bold text-sm sm:text-base mb-2 flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                  <span>Poll Already Finalized</span>
-                </p>
-                <p className="text-blue-700 text-xs sm:text-sm leading-relaxed">
-                  Results are finalized and all payouts have been processed. This is just cleanup to remove the poll from display.
-                </p>
-              </div>
-            </div>
-            {deleteError && (
-              <div className="bg-red-50 border-2 border-red-300 rounded-xl p-3 mb-4">
-                <p className="text-red-800 text-sm font-semibold">{deleteError}</p>
-              </div>
-            )}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setDeleteError(null);
-                }}
-                disabled={isDeleting}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-xl transition-all touch-manipulation disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-6 rounded-xl transition-all touch-manipulation disabled:opacity-50 shadow-lg"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Poll'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
