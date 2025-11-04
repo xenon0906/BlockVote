@@ -342,7 +342,7 @@ export default function PollCard({
 
       {finalized && isCreator && hasBet && (
         <div className="mb-4">
-          {winningOption !== null && creatorBetOption !== null && winningOption === creatorBetOption ? (
+          {winningOption !== null && creatorBet !== null && winningOption === creatorBet ? (
             <div className="bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-400 rounded-xl p-4 sm:p-5 shadow-lg">
               <p className="text-emerald-800 font-bold text-base sm:text-lg md:text-xl flex items-center justify-center gap-2 sm:gap-3 mb-2">
                 <svg className="w-6 h-6 sm:w-7 sm:h-7 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -355,7 +355,7 @@ export default function PollCard({
                 You bet correctly on "{options[winningOption]?.text}"! 90% of the voting pool ({formatEther(totalFunds * BigInt(90) / BigInt(100))} ETH) was automatically sent to your wallet.
               </p>
             </div>
-          ) : creatorBetOption !== null && (
+          ) : creatorBet !== null && (
             <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-300 rounded-xl p-4 sm:p-5">
               <p className="text-gray-700 font-semibold text-sm sm:text-base text-center flex items-center justify-center gap-2">
                 <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -364,7 +364,7 @@ export default function PollCard({
                 <span>Your bet was incorrect</span>
               </p>
               <p className="text-gray-600 text-xs sm:text-sm text-center mt-2">
-                You bet on "{options[creatorBetOption]?.text}" but "{options[winningOption || 0]?.text}" won. Funds went to platform wallet.
+                You bet on "{options[creatorBet]?.text}" but "{options[winningOption || 0]?.text}" won. Funds went to platform wallet.
               </p>
             </div>
           )}
