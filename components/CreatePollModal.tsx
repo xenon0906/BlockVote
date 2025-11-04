@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { createPoll, POLL_CREATION_FEE, VOTE_COST } from '@/utils/contract';
+import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import { createPoll, POLL_CREATION_FEE, VOTE_COST, getActivePollsByCreator } from '@/utils/contract';
 import { getSigner } from '@/utils/wallet';
+import { moderatePoll } from '@/utils/contentModeration';
 
 interface CreatePollModalProps {
   onClose: () => void;
@@ -16,6 +18,31 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
   const [betOption, setBetOption] = useState(0);
   const [duration, setDuration] = useState(24);
   const [isCreating, setIsCreating] = useState(false);
+  const [activePollCount, setActivePollCount] = useState<number>(0);
+  const [isCheckingLimit, setIsCheckingLimit] = useState(false);
+
+  useEffect(() => {
+    checkActivePollLimit();
+  }, []);
+
+  const checkActivePollLimit = async () => {
+    setIsCheckingLimit(true);
+    try {
+      const signer = await getSigner();
+      if (signer) {
+        const address = await signer.getAddress();
+        const provider = new ethers.JsonRpcProvider(
+          process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/'
+        );
+        const count = await getActivePollsByCreator(provider, address);
+        setActivePollCount(count);
+      }
+    } catch (error) {
+      console.error('Error checking poll limit:', error);
+    } finally {
+      setIsCheckingLimit(false);
+    }
+  };
 
   const addOption = () => {
     if (options.length < 6) {
@@ -41,6 +68,12 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Check poll limit first
+    if (activePollCount >= 2) {
+      alert('❌ Limit Reached\n\nYou can only have 2 active polls at a time. Please wait for your existing polls to complete before creating a new one.');
+      return;
+    }
+
     if (!question.trim()) {
       alert('Please enter a question');
       return;
@@ -49,6 +82,13 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
     const validOptions = options.filter(opt => opt.trim());
     if (validOptions.length < 2) {
       alert('Please provide at least 2 options');
+      return;
+    }
+
+    // Content moderation check
+    const moderationResult = moderatePoll(question, validOptions);
+    if (!moderationResult.isAllowed) {
+      alert(`❌ Content Violation\n\n${moderationResult.reason}\n\nPlease revise your poll to comply with community guidelines.`);
       return;
     }
 
@@ -61,7 +101,7 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
       }
 
       await createPoll(signer, question, validOptions, betOption, hasBet, duration);
-      alert('Poll created successfully!');
+      alert('✅ Poll created successfully!');
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -79,7 +119,7 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8">
         <div className="p-6 md:p-8">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
               Create New Poll
             </h2>
@@ -90,6 +130,35 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
               ×
             </button>
           </div>
+
+          {/* Poll Limit Indicator */}
+          {!isCheckingLimit && (
+            <div className={`mb-6 p-4 rounded-xl border-2 ${activePollCount >= 2 ? 'bg-red-50 border-red-300' : 'bg-blue-50 border-blue-300'}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="text-2xl">{activePollCount >= 2 ? '🚫' : '📊'}</span>
+                  <div>
+                    <p className={`font-semibold ${activePollCount >= 2 ? 'text-red-800' : 'text-blue-800'}`}>
+                      Active Polls: {activePollCount} / 2
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      {activePollCount >= 2
+                        ? 'Limit reached. Wait for a poll to complete.'
+                        : `You can create ${2 - activePollCount} more poll${2 - activePollCount === 1 ? '' : 's'}.`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex space-x-1">
+                  {[...Array(2)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-3 h-3 rounded-full ${i < activePollCount ? 'bg-purple-600' : 'bg-gray-300'}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>

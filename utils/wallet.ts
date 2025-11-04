@@ -6,6 +6,9 @@ declare global {
   }
 }
 
+// Cache provider instance for faster access
+let cachedProvider: ethers.BrowserProvider | null = null;
+
 export const isMobile = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent
@@ -15,6 +18,49 @@ export const isMobile = () => {
 export const getMetaMaskDeepLink = (url: string) => {
   const dappUrl = url.replace(/^https?:\/\//, '');
   return `https://metamask.app.link/dapp/${dappUrl}`;
+};
+
+// Optimized: Check network without creating new provider
+const ensureCorrectNetwork = async () => {
+  const sepoliaChainId = '0xaa36a7';
+
+  try {
+    // Fast check using eth_chainId
+    const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+
+    if (currentChainId !== sepoliaChainId) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: sepoliaChainId }],
+        });
+      } catch (switchError: any) {
+        if (switchError.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [
+              {
+                chainId: sepoliaChainId,
+                chainName: 'Sepolia Test Network',
+                nativeCurrency: {
+                  name: 'ETH',
+                  symbol: 'ETH',
+                  decimals: 18,
+                },
+                rpcUrls: ['https://sepolia.infura.io/v3/'],
+                blockExplorerUrls: ['https://sepolia.etherscan.io/'],
+              },
+            ],
+          });
+        } else {
+          throw switchError;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Network check error:', error);
+    throw error;
+  }
 };
 
 export const connectWallet = async () => {
@@ -33,44 +79,19 @@ export const connectWallet = async () => {
   }
 
   try {
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const accounts = await provider.send('eth_requestAccounts', []);
+    // Parallel execution for faster connection
+    const [accounts] = await Promise.all([
+      window.ethereum.request({ method: 'eth_requestAccounts' }),
+      ensureCorrectNetwork(),
+    ]);
 
-    const network = await provider.getNetwork();
-    const sepoliaChainId = 11155111n;
-
-    if (network.chainId !== sepoliaChainId) {
-      try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0xaa36a7' }],
-        });
-      } catch (switchError: any) {
-        if (switchError.code === 4902) {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: '0xaa36a7',
-                chainName: 'Sepolia Test Network',
-                nativeCurrency: {
-                  name: 'ETH',
-                  symbol: 'ETH',
-                  decimals: 18,
-                },
-                rpcUrls: ['https://sepolia.infura.io/v3/'],
-                blockExplorerUrls: ['https://sepolia.etherscan.io/'],
-              },
-            ],
-          });
-        } else {
-          throw switchError;
-        }
-      }
+    // Use cached provider or create new one
+    if (!cachedProvider) {
+      cachedProvider = new ethers.BrowserProvider(window.ethereum);
     }
 
-    const signer = await provider.getSigner();
-    return { provider, signer, address: accounts[0] };
+    const signer = await cachedProvider.getSigner();
+    return { provider: cachedProvider, signer, address: accounts[0] };
   } catch (error: any) {
     if (error.code === 4001) {
       throw new Error('Connection rejected');
@@ -81,7 +102,10 @@ export const connectWallet = async () => {
 
 export const getProvider = () => {
   if (typeof window !== 'undefined' && window.ethereum) {
-    return new ethers.BrowserProvider(window.ethereum);
+    // Return cached provider if available for faster access
+    if (cachedProvider) return cachedProvider;
+    cachedProvider = new ethers.BrowserProvider(window.ethereum);
+    return cachedProvider;
   }
   return null;
 };

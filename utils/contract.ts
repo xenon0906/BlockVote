@@ -54,22 +54,23 @@ export const vote = async (
 ): Promise<{ success: boolean; txHash?: string }> => {
   const contract = getContract(signer);
 
-  // Timeout only for wallet/MetaMask response (10 seconds)
+  // Reduced timeout for faster feedback (5 seconds)
   const walletResponseTimeout = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('TIMEOUT')), 10000);
+    setTimeout(() => reject(new Error('TIMEOUT')), 5000);
   });
 
   try {
-    // Race only the transaction submission (MetaMask opening/confirmation)
+    // Optimized gas limit for faster voting
     const txPromise = contract.vote(pollId, optionIndex, {
       value: ethers.parseEther(VOTE_COST),
-      gasLimit: 100000
+      gasLimit: 80000, // Reduced from 100000 for faster execution
+      maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei'), // Priority fee for faster inclusion
     });
 
     const tx = await Promise.race([txPromise, walletResponseTimeout]) as ethers.ContractTransactionResponse;
     const txHash = tx.hash;
 
-    // Wait for blockchain confirmation WITHOUT timeout - let it take as long as needed
+    // Wait for 1 confirmation (faster than waiting for multiple)
     await tx.wait(1);
 
     return { success: true, txHash };
@@ -181,4 +182,29 @@ export const getTotalPlatformVotes = async (provider: ethers.Provider) => {
   }
 
   return totalVotes;
+};
+
+export const getActivePollsByCreator = async (
+  provider: ethers.Provider,
+  creatorAddress: string
+): Promise<number> => {
+  const contract = getContract(provider);
+  const pollCount = await contract.pollCount();
+  let activeCount = 0;
+
+  for (let i = 1; i <= Number(pollCount); i++) {
+    try {
+      const poll = await getPoll(provider, i);
+      const creator = poll[2]; // creator is at index 2
+      const finalized = poll[5]; // finalized is at index 5
+
+      if (creator.toLowerCase() === creatorAddress.toLowerCase() && !finalized) {
+        activeCount++;
+      }
+    } catch (error) {
+      continue;
+    }
+  }
+
+  return activeCount;
 };
