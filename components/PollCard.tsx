@@ -274,15 +274,6 @@ export default function PollCard({
         </div>
       )}
 
-      {finalized && timeUntilCleanup && (
-        <div className="mb-4 sm:mb-5 bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl p-3 sm:p-4">
-          <p className="text-sm sm:text-base font-semibold text-orange-800 flex items-center gap-2">
-            <span>⏰</span>
-            <span>This poll will be archived in <span className="text-orange-900 font-bold">{timeUntilCleanup}</span></span>
-          </p>
-        </div>
-      )}
-
       {isCreator && (
         <div className="mb-4 sm:mb-5 flex flex-wrap gap-2 text-xs sm:text-sm md:text-base">
           <div className="flex items-center space-x-1.5 bg-gradient-to-r from-accent-50 to-accent-100 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full border-2 border-accent-200 shadow-sm">
