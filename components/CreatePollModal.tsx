@@ -5,7 +5,6 @@ import { ethers } from 'ethers';
 import { createPoll, POLL_CREATION_FEE, VOTE_COST, getActivePollsByCreator } from '@/utils/contract';
 import { getSigner } from '@/utils/wallet';
 import { moderatePoll } from '@/utils/contentModeration';
-import { pollCreationLimiter, getClientIdentifier, formatTimeRemaining } from '@/utils/rateLimit';
 import { sanitizeQuestionInput, sanitizePollInput, detectSuspiciousPatterns, validateURLsInText } from '@/utils/sanitization';
 
 interface CreatePollModalProps {
@@ -72,26 +71,10 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Get wallet address for rate limiting
+    // Get wallet address
     const signer = await getSigner();
     if (!signer) {
       alert('🔐 Please connect your wallet first');
-      return;
-    }
-
-    const address = await signer.getAddress();
-    const identifier = getClientIdentifier(address);
-
-    // Rate limiting check
-    const rateLimitResult = pollCreationLimiter.checkLimit(identifier, 'create_poll');
-    if (!rateLimitResult.allowed) {
-      if (rateLimitResult.blocked) {
-        const timeLeft = formatTimeRemaining(rateLimitResult.blockUntil! - Date.now());
-        alert(`🚫 BLOCKED\n\nYou've been temporarily blocked due to excessive requests.\n\nTry again in: ${timeLeft}`);
-        return;
-      }
-      const timeLeft = formatTimeRemaining(rateLimitResult.resetTime - Date.now());
-      alert(`⏱️ RATE LIMIT\n\nYou're creating polls too quickly.\n\nPlease wait: ${timeLeft}`);
       return;
     }
 
