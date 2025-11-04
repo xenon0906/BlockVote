@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { vote, getPollOptions, hasVoted, getCreatorBetOption, finalizePoll, getPollExtended } from '@/utils/contract';
+import { vote, getPollOptions, hasVoted, getCreatorBetOption, finalizePoll, getPollExtended, deletePoll } from '@/utils/contract';
 import { getSigner, formatEther } from '@/utils/wallet';
 import { votingLimiter, getClientIdentifier, formatTimeRemaining } from '@/utils/rateLimit';
 
@@ -44,6 +44,9 @@ export default function PollCard({
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [timeUntilCleanup, setTimeUntilCleanup] = useState<string>('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     loadPollData();
@@ -169,6 +172,28 @@ export default function PollCard({
     }
   };
 
+  const handleDelete = async () => {
+    if (!userAddress || !isCreator) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const signer = await getSigner();
+      if (!signer) {
+        setDeleteError('Please connect your wallet');
+        return;
+      }
+
+      await deletePoll(signer, pollId);
+      if (onVoteSuccess) onVoteSuccess();
+    } catch (error: any) {
+      console.error('Error deleting poll:', error);
+      setDeleteError('Failed to delete poll. Please try again.');
+      setIsDeleting(false);
+    }
+  };
+
   const handleVote = async () => {
     if (selectedOption === null || !userAddress) return;
 
@@ -272,7 +297,20 @@ export default function PollCard({
   return (
     <div className="bg-white rounded-2xl p-4 sm:p-5 md:p-6 shadow-lg border border-gray-200 hover:shadow-2xl hover:border-purple-200 transition-all duration-300 touch-manipulation">
       <div className="flex justify-between items-start mb-4 sm:mb-5">
-        <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 flex-1 mr-3 sm:mr-4 leading-tight">{question}</h3>
+        <div className="flex-1 mr-3 sm:mr-4">
+          <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 leading-tight mb-2">{question}</h3>
+          {isCreator && !finalized && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-xs sm:text-sm text-red-600 hover:text-red-800 font-semibold underline flex items-center gap-1 touch-manipulation"
+            >
+              <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              Delete Poll
+            </button>
+          )}
+        </div>
         <span className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap shadow-md flex-shrink-0 ${
           finalized
             ? 'bg-gray-100 text-gray-700 border border-gray-300'
@@ -461,6 +499,60 @@ export default function PollCard({
             </svg>
             <span>Connect wallet to participate</span>
           </p>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Delete Poll?</h3>
+              <p className="text-gray-600 text-sm sm:text-base mb-4">
+                Are you sure you want to delete this poll?
+              </p>
+              <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-6">
+                <p className="text-red-800 font-bold text-sm sm:text-base mb-2 flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <span>Warning: No Refund</span>
+                </p>
+                <p className="text-red-700 text-xs sm:text-sm leading-relaxed">
+                  All funds in this poll will go to the platform. You will not receive any refund for your bet or creation fee.
+                </p>
+              </div>
+            </div>
+            {deleteError && (
+              <div className="bg-red-50 border-2 border-red-300 rounded-xl p-3 mb-4">
+                <p className="text-red-800 text-sm font-semibold">{deleteError}</p>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteError(null);
+                }}
+                disabled={isDeleting}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-xl transition-all touch-manipulation disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-6 rounded-xl transition-all touch-manipulation disabled:opacity-50 shadow-lg"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Poll'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

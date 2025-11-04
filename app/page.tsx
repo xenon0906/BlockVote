@@ -5,7 +5,6 @@ import { ethers } from 'ethers';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import { getActivePolls, getCompletedPolls, getPoll, getTotalPlatformVotes } from '@/utils/contract';
-import { pollLoadLimiter, getClientIdentifier } from '@/utils/rateLimit';
 
 // Dynamic imports for better performance
 const PollCard = dynamic(() => import('@/components/PollCard'), {
@@ -78,16 +77,6 @@ export default function Home() {
   };
 
   const loadPolls = async () => {
-    // Rate limiting check for poll loading
-    const identifier = getClientIdentifier(userAddress || undefined);
-    const rateLimitResult = pollLoadLimiter.checkLimit(identifier, 'load_polls');
-
-    if (!rateLimitResult.allowed) {
-      console.warn('Rate limit exceeded for poll loading');
-      setLoading(false);
-      return;
-    }
-
     try {
       const provider = new ethers.JsonRpcProvider(
         process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/'
@@ -229,15 +218,13 @@ export default function Home() {
                   <span>Create Poll</span>
                 </div>
               </button>
-              {totalPlatformVotes > 0 && (
-                <div className="flex items-center space-x-2 text-gray-700 bg-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl shadow-lg border border-gray-200 w-full sm:w-auto justify-center">
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <span className="font-bold text-base sm:text-lg tabular-nums">{displayedVotes.toLocaleString()}</span>
-                  <span className="text-xs sm:text-sm">Total Votes</span>
-                </div>
-              )}
+              <div className="flex items-center space-x-2 text-gray-700 bg-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl shadow-lg border border-gray-200 w-full sm:w-auto justify-center">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span className="font-bold text-base sm:text-lg tabular-nums">{displayedVotes.toLocaleString()}</span>
+                <span className="text-xs sm:text-sm">Total Votes</span>
+              </div>
             </div>
 
             {/* Feature Cards */}
