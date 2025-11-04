@@ -21,23 +21,41 @@ export const getMetaMaskDeepLink = (url: string) => {
 };
 
 // Optimized: Check network without creating new provider
-const ensureCorrectNetwork = async () => {
+export const ensureCorrectNetwork = async () => {
   const sepoliaChainId = '0xaa36a7'; // Sepolia chain ID (11155111 in decimal)
+  const sepoliaChainIdDecimal = 11155111;
 
   try {
+    // Clear any cached network data
+    if (cachedProvider) {
+      cachedProvider = null;
+    }
+
     // Fast check using eth_chainId
     const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
 
-    if (currentChainId !== sepoliaChainId) {
+    // Handle both hex and decimal formats
+    const currentChainIdNum = typeof currentChainId === 'string'
+      ? parseInt(currentChainId, 16)
+      : currentChainId;
+
+    if (currentChainId !== sepoliaChainId && currentChainIdNum !== sepoliaChainIdDecimal) {
       try {
+        // Force MetaMask to refresh network list
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+
         // Try to switch to Sepolia
         await window.ethereum.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: sepoliaChainId }],
         });
+
+        // Wait a bit for network switch to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
       } catch (switchError: any) {
         // If Sepolia is not added to wallet, add it
-        if (switchError.code === 4902) {
+        if (switchError.code === 4902 || switchError.message?.includes('Unrecognized chain')) {
           await window.ethereum.request({
             method: 'wallet_addEthereumChain',
             params: [
@@ -46,10 +64,14 @@ const ensureCorrectNetwork = async () => {
                 chainName: 'Sepolia Test Network',
                 nativeCurrency: {
                   name: 'SepoliaETH',
-                  symbol: 'SepoliaETH',
+                  symbol: 'ETH',
                   decimals: 18,
                 },
-                rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
+                rpcUrls: [
+                  'https://ethereum-sepolia-rpc.publicnode.com',
+                  'https://rpc.sepolia.org',
+                  'https://sepolia.infura.io/v3/'
+                ],
                 blockExplorerUrls: ['https://sepolia.etherscan.io/'],
               },
             ],
@@ -62,6 +84,8 @@ const ensureCorrectNetwork = async () => {
         }
       }
     }
+
+    return true;
   } catch (error: any) {
     console.error('Network check error:', error);
     if (error.message?.includes('Sepolia')) {
@@ -136,4 +160,30 @@ export const formatAddress = (address: string) => {
 
 export const formatEther = (value: bigint) => {
   return parseFloat(ethers.formatEther(value)).toFixed(4);
+};
+
+// Get current network name for debugging
+export const getCurrentNetworkName = async (): Promise<string> => {
+  if (!window.ethereum) return 'No Wallet';
+
+  try {
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    const chainIdNum = parseInt(chainId, 16);
+
+    const networks: { [key: number]: string } = {
+      1: 'Ethereum Mainnet',
+      5: 'Goerli',
+      11155111: 'Sepolia',
+      137: 'Polygon',
+      80001: 'Mumbai',
+      56: 'BSC',
+      97: 'BSC Testnet',
+      42161: 'Arbitrum',
+      10: 'Optimism',
+    };
+
+    return networks[chainIdNum] || `Unknown (${chainId})`;
+  } catch {
+    return 'Unknown';
+  }
 };

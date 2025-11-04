@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { connectWallet, formatAddress } from '@/utils/wallet';
+import { connectWallet, formatAddress, ensureCorrectNetwork, getCurrentNetworkName } from '@/utils/wallet';
 
 export default function Header() {
   const [address, setAddress] = useState<string | null>(null);
@@ -10,6 +10,7 @@ export default function Header() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isWrongNetwork, setIsWrongNetwork] = useState(false);
+  const [currentNetwork, setCurrentNetwork] = useState<string>('');
 
   useEffect(() => {
     checkConnection();
@@ -52,7 +53,9 @@ export default function Header() {
           setAddress(accounts[0]);
           // Check if on correct network
           const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-          setIsWrongNetwork(chainId !== '0xaa36a7'); // Sepolia chain ID
+          const networkName = await getCurrentNetworkName();
+          setCurrentNetwork(networkName);
+          setIsWrongNetwork(chainId !== '0xaa36a7' && parseInt(chainId, 16) !== 11155111); // Check both hex and decimal
         }
       } catch (error) {
         console.error('Error checking connection:', error);
@@ -102,6 +105,17 @@ export default function Header() {
     }
   };
 
+  const handleSwitchToSepolia = async () => {
+    setShowDropdown(false);
+    try {
+      await ensureCorrectNetwork();
+      // Reload to refresh network status
+      window.location.reload();
+    } catch (error: any) {
+      alert(`Failed to switch network: ${error.message}`);
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 shadow-2xl border-b border-purple-500/20">
       <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
@@ -140,7 +154,10 @@ export default function Header() {
             {/* Network Warning */}
             {address && isWrongNetwork && (
               <div className="bg-red-500/20 border border-red-400 rounded-lg px-2 xs:px-3 py-1.5 animate-pulse">
-                <span className="text-red-300 text-[10px] xs:text-xs font-bold">Wrong Network!</span>
+                <div className="flex flex-col items-center">
+                  <span className="text-red-300 text-[10px] xs:text-xs font-bold">Wrong Network!</span>
+                  <span className="text-red-200 text-[9px] xs:text-[10px]">{currentNetwork}</span>
+                </div>
               </div>
             )}
             {/* Mobile Menu Button */}
@@ -177,13 +194,24 @@ export default function Header() {
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-xs text-gray-500">Connected</p>
                         {isWrongNetwork ? (
-                          <span className="text-xs text-red-600 font-bold">⚠️ Wrong Network</span>
+                          <span className="text-xs text-red-600 font-bold">⚠️ {currentNetwork}</span>
                         ) : (
                           <span className="text-xs text-green-600 font-bold">✅ Sepolia</span>
                         )}
                       </div>
                       <p className="text-sm font-medium text-gray-900 truncate">{address}</p>
                     </div>
+                    {isWrongNetwork && (
+                      <button
+                        onClick={handleSwitchToSepolia}
+                        className="w-full px-4 py-2 text-left text-sm text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all flex items-center space-x-2 animate-pulse"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span className="font-bold">Switch to Sepolia Network</span>
+                      </button>
+                    )}
                     <button
                       onClick={handleSwitchAccount}
                       className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
