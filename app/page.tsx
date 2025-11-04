@@ -1,11 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense, useMemo, useCallback } from 'react';
 import { ethers } from 'ethers';
+import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
-import PollCard from '@/components/PollCard';
-import CreatePollModal from '@/components/CreatePollModal';
 import { getActivePolls, getCompletedPolls, getPoll, getTotalPlatformVotes } from '@/utils/contract';
+
+// Dynamic imports for better performance
+const PollCard = dynamic(() => import('@/components/PollCard'), {
+  loading: () => <div className="bg-white rounded-2xl p-6 shadow-lg animate-pulse h-64"></div>,
+});
+
+const CreatePollModal = dynamic(() => import('@/components/CreatePollModal'), {
+  ssr: false,
+});
 
 interface Poll {
   id: number;
@@ -35,7 +43,8 @@ export default function Home() {
     loadPolls();
     checkWalletConnection();
 
-    const interval = setInterval(loadPolls, 30000);
+    // Increase interval to 60 seconds for better performance
+    const interval = setInterval(loadPolls, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -139,70 +148,76 @@ export default function Home() {
     ? activePolls.filter(poll => !trendingPollIds.has(poll.id))
     : completedPolls;
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setLoading(true);
     loadPolls();
-  };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50">
       <Header />
 
-      {/* Hero Section - Full viewport height */}
-      <section className="min-h-[calc(100vh-5rem)] flex items-center justify-center">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-          <div className="flex flex-col items-center text-center mb-12">
-            <div className="inline-block mb-6">
-              <div className="flex items-center space-x-2 bg-gradient-to-r from-blue-100 to-purple-100 px-4 py-2 rounded-full border border-purple-200">
-                <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-semibold text-purple-700">Live on Sepolia</span>
-              </div>
+      {/* Hero Section - Optimized for all screen sizes */}
+      <section className="h-[calc(100vh-4rem)] min-h-[600px] max-h-[1000px] flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
+        <div className="w-full max-w-7xl mx-auto">
+          <div className="flex flex-col items-center justify-center text-center h-full space-y-6 md:space-y-8">
+            {/* Live Badge */}
+            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-100 to-purple-100 px-4 py-2 rounded-full border border-purple-200 shadow-md">
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+              <span className="text-xs sm:text-sm font-semibold text-purple-700">Live on Sepolia</span>
             </div>
-            <h2 className="text-4xl md:text-5xl lg:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 mb-6 leading-tight">
+
+            {/* Main Heading */}
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 leading-tight px-4">
               Your Voice. Your Choice.
-            </h2>
-            <p className="text-gray-600 text-lg md:text-xl max-w-3xl mb-8">
+            </h1>
+
+            {/* Description */}
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 max-w-2xl lg:max-w-4xl px-4">
               Decentralized polling powered by blockchain. Every vote counts, every opinion matters.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center w-full max-w-2xl px-4">
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="relative group"
+                className="relative group w-full sm:w-auto"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity"></div>
-                <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-base md:text-lg px-8 py-4 rounded-2xl shadow-2xl hover:shadow-purple-500/50 transform hover:scale-105 transition-all flex items-center space-x-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-base md:text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-2xl shadow-2xl hover:shadow-purple-500/50 transform hover:scale-105 transition-all flex items-center justify-center space-x-2">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   <span>Create Poll</span>
                 </div>
               </button>
               {totalPlatformVotes > 0 && (
-                <div className="flex items-center space-x-2 text-gray-700 bg-white px-6 py-4 rounded-2xl shadow-lg border border-gray-200">
-                  <svg className="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center space-x-2 text-gray-700 bg-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl shadow-lg border border-gray-200 w-full sm:w-auto justify-center">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
-                  <span className="font-bold text-lg tabular-nums">{displayedVotes.toLocaleString()}</span>
-                  <span className="text-sm">Total Votes</span>
+                  <span className="font-bold text-base sm:text-lg tabular-nums">{displayedVotes.toLocaleString()}</span>
+                  <span className="text-xs sm:text-sm">Total Votes</span>
                 </div>
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto w-full">
-              <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
-                <div className="text-5xl mb-4">🗳️</div>
-                <h3 className="font-bold text-gray-900 text-xl mb-3">Vote Freely</h3>
-                <p className="text-gray-600 text-base">Participate in polls that matter to you. Every vote is recorded on-chain.</p>
+            {/* Feature Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 lg:gap-8 w-full max-w-6xl px-4 pt-4">
+              <div className="bg-white rounded-xl md:rounded-2xl p-5 md:p-6 lg:p-8 shadow-lg md:shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
+                <div className="text-3xl sm:text-4xl md:text-5xl mb-2 md:mb-3">🗳️</div>
+                <h3 className="font-bold text-gray-900 text-base sm:text-lg md:text-xl mb-1 md:mb-2">Vote Freely</h3>
+                <p className="text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed">Participate in polls that matter to you. Every vote is recorded on-chain.</p>
               </div>
-              <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
-                <div className="text-5xl mb-4">🔒</div>
-                <h3 className="font-bold text-gray-900 text-xl mb-3">Transparent</h3>
-                <p className="text-gray-600 text-base">All votes are public and verifiable on the blockchain. No manipulation.</p>
+              <div className="bg-white rounded-xl md:rounded-2xl p-5 md:p-6 lg:p-8 shadow-lg md:shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
+                <div className="text-3xl sm:text-4xl md:text-5xl mb-2 md:mb-3">🔒</div>
+                <h3 className="font-bold text-gray-900 text-base sm:text-lg md:text-xl mb-1 md:mb-2">Transparent</h3>
+                <p className="text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed">All votes are public and verifiable on the blockchain. No manipulation.</p>
               </div>
-              <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
-                <div className="text-5xl mb-4">⚡</div>
-                <h3 className="font-bold text-gray-900 text-xl mb-3">Instant Results</h3>
-                <p className="text-gray-600 text-base">See live results as votes come in. Real-time updates for every poll.</p>
+              <div className="bg-white rounded-xl md:rounded-2xl p-5 md:p-6 lg:p-8 shadow-lg md:shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
+                <div className="text-3xl sm:text-4xl md:text-5xl mb-2 md:mb-3">⚡</div>
+                <h3 className="font-bold text-gray-900 text-base sm:text-lg md:text-xl mb-1 md:mb-2">Instant Results</h3>
+                <p className="text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed">See live results as votes come in. Real-time updates for every poll.</p>
               </div>
             </div>
           </div>
