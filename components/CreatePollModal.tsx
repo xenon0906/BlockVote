@@ -18,6 +18,7 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
   const [hasBet, setHasBet] = useState(false);
   const [betOption, setBetOption] = useState(0);
   const [duration, setDuration] = useState(24);
+  const [durationUnit, setDurationUnit] = useState<'minutes' | 'hours'>('hours');
   const [isCreating, setIsCreating] = useState(false);
   const [activePollCount, setActivePollCount] = useState<number>(0);
   const [isCheckingLimit, setIsCheckingLimit] = useState(false);
@@ -135,7 +136,9 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
 
     setIsCreating(true);
     try {
-      await createPoll(signer, sanitizedQuestion, sanitizedOptions, betOption, hasBet, duration);
+      // Convert duration to hours
+      const durationInHours = durationUnit === 'minutes' ? duration / 60 : duration;
+      await createPoll(signer, sanitizedQuestion, sanitizedOptions, betOption, hasBet, durationInHours);
       alert('✅ Poll created successfully!');
       onSuccess();
       onClose();
@@ -151,16 +154,17 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
     : parseFloat(POLL_CREATION_FEE);
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8">
-        <div className="p-6 md:p-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 overflow-y-auto">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-2xl min-h-screen sm:min-h-0 sm:my-8">
+        <div className="p-4 sm:p-6 md:p-8">
+          <div className="flex justify-between items-center mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
               Create New Poll
             </h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl transition-colors"
+              className="text-gray-400 hover:text-gray-600 text-3xl sm:text-2xl transition-colors -mt-1"
+              aria-label="Close modal"
             >
               ×
             </button>
@@ -168,12 +172,12 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
 
           {/* Poll Limit Indicator */}
           {!isCheckingLimit && (
-            <div className={`mb-6 p-4 rounded-xl border-2 ${activePollCount >= 2 ? 'bg-red-50 border-red-300' : 'bg-blue-50 border-blue-300'}`}>
-              <div className="flex items-center justify-between">
+            <div className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-xl border-2 ${activePollCount >= 2 ? 'bg-red-50 border-red-300' : 'bg-blue-50 border-blue-300'}`}>
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center space-x-2">
-                  <span className="text-2xl">{activePollCount >= 2 ? '🚫' : '📊'}</span>
+                  <span className="text-xl sm:text-2xl">{activePollCount >= 2 ? '🚫' : '📊'}</span>
                   <div>
-                    <p className={`font-semibold ${activePollCount >= 2 ? 'text-red-800' : 'text-blue-800'}`}>
+                    <p className={`font-semibold text-sm sm:text-base ${activePollCount >= 2 ? 'text-red-800' : 'text-blue-800'}`}>
                       Active Polls: {activePollCount} / 2
                     </p>
                     <p className="text-xs text-gray-600">
@@ -195,7 +199,7 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Question
@@ -204,7 +208,7 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
                 type="text"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                className="input-field"
+                className="input-field text-sm sm:text-base"
                 placeholder="What do you want to ask?"
                 maxLength={200}
               />
@@ -214,14 +218,14 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Options
               </label>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {options.map((option, idx) => (
-                  <div key={idx} className="flex items-center space-x-2">
+                  <div key={idx} className="flex items-center gap-2">
                     <input
                       type="text"
                       value={option}
                       onChange={(e) => updateOption(idx, e.target.value)}
-                      className="input-field"
+                      className="input-field flex-1 text-sm sm:text-base"
                       placeholder={`Option ${idx + 1}`}
                       maxLength={100}
                     />
@@ -229,7 +233,8 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
                       <button
                         type="button"
                         onClick={() => removeOption(idx)}
-                        className="text-red-500 hover:text-red-700 px-3 py-2 transition-colors"
+                        className="text-red-500 hover:text-red-700 px-2 sm:px-3 py-2 text-xl sm:text-2xl transition-colors flex-shrink-0"
+                        aria-label={`Remove option ${idx + 1}`}
                       >
                         ×
                       </button>
@@ -250,32 +255,91 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Duration (hours, max 720)
+                Duration
               </label>
-              <input
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(Math.min(720, Math.max(1, parseInt(e.target.value) || 1)))}
-                className="input-field"
-                min="1"
-                max="720"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {duration} hours = {Math.floor(duration / 24)} days {duration % 24} hours
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    value={duration}
+                    onChange={(e) => {
+                      const maxValue = durationUnit === 'minutes' ? 43200 : 720;
+                      setDuration(Math.min(maxValue, Math.max(1, parseInt(e.target.value) || 1)));
+                    }}
+                    className="input-field w-full"
+                    min="1"
+                    max={durationUnit === 'minutes' ? 43200 : 720}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDurationUnit('minutes');
+                      if (duration > 43200) setDuration(60);
+                    }}
+                    className={`flex-1 sm:flex-none px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                      durationUnit === 'minutes'
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    Minutes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDurationUnit('hours');
+                      if (duration > 720) setDuration(24);
+                    }}
+                    className={`flex-1 sm:flex-none px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                      durationUnit === 'hours'
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    Hours
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {durationUnit === 'minutes'
+                  ? duration < 60
+                    ? `${duration} minutes`
+                    : `${duration} minutes = ${Math.floor(duration / 60)} hours ${duration % 60} minutes`
+                  : `${duration} hours = ${Math.floor(duration / 24)} days ${duration % 24} hours`
+                }
               </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {durationUnit === 'minutes' ? (
+                  <>
+                    <button type="button" onClick={() => setDuration(5)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">5 min</button>
+                    <button type="button" onClick={() => setDuration(15)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">15 min</button>
+                    <button type="button" onClick={() => setDuration(30)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">30 min</button>
+                    <button type="button" onClick={() => setDuration(60)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">1 hour</button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => setDuration(1)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">1 hour</button>
+                    <button type="button" onClick={() => setDuration(6)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">6 hours</button>
+                    <button type="button" onClick={() => setDuration(24)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">1 day</button>
+                    <button type="button" onClick={() => setDuration(168)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">1 week</button>
+                  </>
+                )}
+              </div>
             </div>
 
-            <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
+            <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-3 sm:p-4">
+              <div className="flex items-start gap-2 sm:gap-3">
                 <input
                   type="checkbox"
                   id="hasBet"
                   checked={hasBet}
                   onChange={(e) => setHasBet(e.target.checked)}
-                  className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  className="mt-1 w-4 h-4 sm:w-5 sm:h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 flex-shrink-0"
                 />
-                <div className="flex-1">
-                  <label htmlFor="hasBet" className="font-medium text-gray-900 cursor-pointer">
+                <div className="flex-1 min-w-0">
+                  <label htmlFor="hasBet" className="font-medium text-sm sm:text-base text-gray-900 cursor-pointer">
                     Place a bet on an option
                   </label>
                   <p className="text-xs text-gray-600 mt-1">
@@ -285,14 +349,14 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
               </div>
 
               {hasBet && (
-                <div className="mt-4">
+                <div className="mt-3 sm:mt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Which option will win?
                   </label>
                   <select
                     value={betOption}
                     onChange={(e) => setBetOption(parseInt(e.target.value))}
-                    className="input-field"
+                    className="input-field text-sm sm:text-base w-full"
                   >
                     {options.map((opt, idx) => (
                       <option key={idx} value={idx}>
@@ -304,37 +368,37 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
               )}
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="text-sm space-y-1">
-                <div className="flex justify-between">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+              <div className="text-xs sm:text-sm space-y-1 sm:space-y-2">
+                <div className="flex justify-between items-center">
                   <span className="text-gray-600">Platform Fee:</span>
                   <span className="font-medium text-gray-900">{POLL_CREATION_FEE} ETH</span>
                 </div>
                 {hasBet && (
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-gray-600">Your Bet:</span>
                     <span className="font-medium text-gray-900">{VOTE_COST} ETH</span>
                   </div>
                 )}
-                <div className="flex justify-between pt-2 border-t border-blue-300">
+                <div className="flex justify-between items-center pt-2 border-t border-blue-300">
                   <span className="font-bold text-gray-900">Total:</span>
-                  <span className="font-bold text-primary-600">{totalCost.toFixed(4)} ETH</span>
+                  <span className="font-bold text-primary-600 text-sm sm:text-base">{totalCost.toFixed(4)} ETH</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="btn-secondary flex-1"
+                className="btn-secondary flex-1 py-3 sm:py-2 text-sm sm:text-base order-2 sm:order-1"
                 disabled={isCreating}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="btn-primary flex-1"
+                className="btn-primary flex-1 py-3 sm:py-2 text-sm sm:text-base order-1 sm:order-2"
                 disabled={isCreating}
               >
                 {isCreating ? 'Creating...' : 'Create Poll'}
