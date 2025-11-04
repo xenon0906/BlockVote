@@ -134,9 +134,20 @@ const CreatePollModal = memo(function CreatePollModal({ onClose, onSuccess }: Cr
 
     setIsCreating(true);
     try {
-      // Convert duration to hours
-      const durationInHours = durationUnit === 'minutes' ? duration / 60 : duration;
-      await createPoll(signer, sanitizedQuestion, sanitizedOptions, betOption, hasBet, durationInHours);
+      // Convert duration to hours (minimum 1 hour for contract compatibility)
+      let durationInHours = durationUnit === 'minutes' ? Math.ceil(duration / 60) : duration;
+
+      // Ensure minimum of 1 hour (contract expects integer hours)
+      if (durationInHours < 1) {
+        durationInHours = 1;
+      }
+
+      // Show warning if duration was rounded up
+      if (durationUnit === 'minutes' && duration < 60) {
+        alert(`ℹ️ Note: Minimum poll duration is 1 hour. Your ${duration} minute${duration > 1 ? 's' : ''} poll has been set to 1 hour.`);
+      }
+
+      await createPoll(signer, sanitizedQuestion, sanitizedOptions, betOption, hasBet, Math.floor(durationInHours));
       alert('✅ Poll created successfully!');
       onSuccess();
       onClose();
@@ -303,17 +314,24 @@ const CreatePollModal = memo(function CreatePollModal({ onClose, onSuccess }: Cr
               <p className="text-xs text-gray-500 mt-2">
                 {durationUnit === 'minutes'
                   ? duration < 60
-                    ? `${duration} minutes`
+                    ? `⚠️ ${duration} minutes will be rounded to 1 hour (minimum duration)`
                     : `${duration} minutes = ${Math.floor(duration / 60)} hours ${duration % 60} minutes`
                   : `${duration} hours = ${Math.floor(duration / 24)} days ${duration % 24} hours`
                 }
               </p>
+              {durationUnit === 'minutes' && duration < 60 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mt-2">
+                  <p className="text-xs text-yellow-800">
+                    <span className="font-semibold">Note:</span> Due to blockchain limitations, the minimum poll duration is 1 hour. Polls set for less than 60 minutes will automatically be set to 1 hour.
+                  </p>
+                </div>
+              )}
               <div className="mt-2 flex flex-wrap gap-2">
                 {durationUnit === 'minutes' ? (
                   <>
-                    <button type="button" onClick={() => setDuration(5)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">5 min</button>
-                    <button type="button" onClick={() => setDuration(15)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">15 min</button>
-                    <button type="button" onClick={() => setDuration(30)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">30 min</button>
+                    <button type="button" onClick={() => setDuration(5)} className="text-xs px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">5 min → 1h</button>
+                    <button type="button" onClick={() => setDuration(15)} className="text-xs px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">15 min → 1h</button>
+                    <button type="button" onClick={() => setDuration(30)} className="text-xs px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">30 min → 1h</button>
                     <button type="button" onClick={() => setDuration(60)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">1 hour</button>
                   </>
                 ) : (
