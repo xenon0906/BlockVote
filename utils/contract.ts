@@ -47,12 +47,57 @@ export const createPoll = async (
   return null;
 };
 
-export const vote = async (signer: ethers.Signer, pollId: number, optionIndex: number) => {
+export const vote = async (
+  signer: ethers.Signer,
+  pollId: number,
+  optionIndex: number
+): Promise<{ success: boolean; txHash?: string }> => {
   const contract = getContract(signer);
-  const tx = await contract.vote(pollId, optionIndex, {
-    value: ethers.parseEther(VOTE_COST)
+
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('TIMEOUT')), 10000);
   });
-  await tx.wait();
+
+  try {
+    const txPromise = contract.vote(pollId, optionIndex, {
+      value: ethers.parseEther(VOTE_COST),
+      gasLimit: 100000
+    });
+
+    const tx = await Promise.race([txPromise, timeoutPromise]) as ethers.ContractTransactionResponse;
+    const txHash = tx.hash;
+
+    const waitPromise = tx.wait(1);
+    await Promise.race([waitPromise, timeoutPromise]);
+
+    return { success: true, txHash };
+  } catch (error: any) {
+    if (error.message === 'TIMEOUT') {
+      throw new Error('TIMEOUT');
+    }
+
+    const errorStr = error.message?.toLowerCase() || '';
+    const reason = error.reason?.toLowerCase() || '';
+    const data = error.data?.message?.toLowerCase() || '';
+
+    if (errorStr.includes('already voted') || reason.includes('already voted') || data.includes('already voted')) {
+      throw new Error('ALREADY_VOTED');
+    } else if (errorStr.includes('insufficient funds') || reason.includes('insufficient') || data.includes('insufficient')) {
+      throw new Error('INSUFFICIENT_BALANCE');
+    } else if (errorStr.includes('user rejected') || errorStr.includes('user denied')) {
+      throw new Error('USER_REJECTED');
+    } else if (errorStr.includes('network') || errorStr.includes('connection')) {
+      throw new Error('NETWORK_ERROR');
+    } else if (errorStr.includes('poll expired') || reason.includes('poll expired') || data.includes('poll expired')) {
+      throw new Error('POLL_EXPIRED');
+    } else if (errorStr.includes('poll finalized') || reason.includes('poll finalized') || data.includes('poll finalized')) {
+      throw new Error('POLL_FINALIZED');
+    } else if (errorStr.includes('invalid option') || reason.includes('invalid option') || data.includes('invalid option')) {
+      throw new Error('INVALID_OPTION');
+    }
+
+    throw error;
+  }
 };
 
 export const finalizePoll = async (signer: ethers.Signer, pollId: number) => {
