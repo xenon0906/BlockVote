@@ -158,7 +158,7 @@ const PollCard = memo(function PollCard({
     try {
       const signer = await getSigner();
       if (!signer) {
-        setVoteError('Please connect your wallet');
+        setVoteError('Please connect your wallet to Sepolia network');
         return;
       }
 
@@ -194,7 +194,7 @@ const PollCard = memo(function PollCard({
       } else if (errorMessage === 'TIMEOUT') {
         setVoteError('Wallet connection timed out. Please check MetaMask is responding and try again.');
       } else if (errorMessage === 'INSUFFICIENT_BALANCE') {
-        setVoteError('Insufficient balance. You need at least 0.001 ETH plus gas fees to vote.');
+        setVoteError('Insufficient Sepolia ETH balance. You need at least 0.001 Sepolia ETH plus gas fees to vote. Get free Sepolia ETH from a faucet.');
       } else if (errorMessage === 'USER_REJECTED') {
         setVoteError('Transaction was cancelled.');
       } else if (errorMessage === 'NETWORK_ERROR') {

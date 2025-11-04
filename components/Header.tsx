@@ -9,13 +9,17 @@ export default function Header() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isWrongNetwork, setIsWrongNetwork] = useState(false);
 
   useEffect(() => {
     checkConnection();
 
     if (typeof window !== 'undefined' && window.ethereum) {
       window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', () => window.location.reload());
+      window.ethereum.on('chainChanged', (chainId: string) => {
+        setIsWrongNetwork(chainId !== '0xaa36a7');
+        window.location.reload();
+      });
     }
 
     const handleClickOutside = (event: MouseEvent) => {
@@ -46,6 +50,9 @@ export default function Header() {
         const accounts = await window.ethereum.request({ method: 'eth_accounts' });
         if (accounts.length > 0) {
           setAddress(accounts[0]);
+          // Check if on correct network
+          const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+          setIsWrongNetwork(chainId !== '0xaa36a7'); // Sepolia chain ID
         }
       } catch (error) {
         console.error('Error checking connection:', error);
@@ -130,6 +137,12 @@ export default function Header() {
           </nav>
 
           <div className="flex items-center space-x-2 md:space-x-4">
+            {/* Network Warning */}
+            {address && isWrongNetwork && (
+              <div className="bg-red-500/20 border border-red-400 rounded-lg px-2 xs:px-3 py-1.5 animate-pulse">
+                <span className="text-red-300 text-[10px] xs:text-xs font-bold">Wrong Network!</span>
+              </div>
+            )}
             {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -161,7 +174,14 @@ export default function Header() {
                 {showDropdown && (
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                     <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-xs text-gray-500">Connected</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-gray-500">Connected</p>
+                        {isWrongNetwork ? (
+                          <span className="text-xs text-red-600 font-bold">⚠️ Wrong Network</span>
+                        ) : (
+                          <span className="text-xs text-green-600 font-bold">✅ Sepolia</span>
+                        )}
+                      </div>
                       <p className="text-sm font-medium text-gray-900 truncate">{address}</p>
                     </div>
                     <button

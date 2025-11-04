@@ -22,7 +22,7 @@ export const getMetaMaskDeepLink = (url: string) => {
 
 // Optimized: Check network without creating new provider
 const ensureCorrectNetwork = async () => {
-  const sepoliaChainId = '0xaa36a7';
+  const sepoliaChainId = '0xaa36a7'; // Sepolia chain ID (11155111 in decimal)
 
   try {
     // Fast check using eth_chainId
@@ -30,11 +30,13 @@ const ensureCorrectNetwork = async () => {
 
     if (currentChainId !== sepoliaChainId) {
       try {
+        // Try to switch to Sepolia
         await window.ethereum.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: sepoliaChainId }],
         });
       } catch (switchError: any) {
+        // If Sepolia is not added to wallet, add it
         if (switchError.code === 4902) {
           await window.ethereum.request({
             method: 'wallet_addEthereumChain',
@@ -43,23 +45,29 @@ const ensureCorrectNetwork = async () => {
                 chainId: sepoliaChainId,
                 chainName: 'Sepolia Test Network',
                 nativeCurrency: {
-                  name: 'ETH',
-                  symbol: 'ETH',
+                  name: 'SepoliaETH',
+                  symbol: 'SepoliaETH',
                   decimals: 18,
                 },
-                rpcUrls: ['https://sepolia.infura.io/v3/'],
+                rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
                 blockExplorerUrls: ['https://sepolia.etherscan.io/'],
               },
             ],
           });
+        } else if (switchError.code === 4001) {
+          // User rejected the switch
+          throw new Error('Please switch to Sepolia Test Network to use this app. This app uses test ETH, not real ETH.');
         } else {
           throw switchError;
         }
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Network check error:', error);
-    throw error;
+    if (error.message?.includes('Sepolia')) {
+      throw error;
+    }
+    throw new Error('Failed to switch to Sepolia network. Please switch manually in MetaMask.');
   }
 };
 
@@ -114,6 +122,8 @@ export const getSigner = async () => {
   const provider = getProvider();
   if (!provider) return null;
   try {
+    // ALWAYS ensure correct network before returning signer
+    await ensureCorrectNetwork();
     return await provider.getSigner();
   } catch {
     return null;
