@@ -54,21 +54,23 @@ export const vote = async (
 ): Promise<{ success: boolean; txHash?: string }> => {
   const contract = getContract(signer);
 
-  const timeoutPromise = new Promise((_, reject) => {
+  // Timeout only for wallet/MetaMask response (10 seconds)
+  const walletResponseTimeout = new Promise((_, reject) => {
     setTimeout(() => reject(new Error('TIMEOUT')), 10000);
   });
 
   try {
+    // Race only the transaction submission (MetaMask opening/confirmation)
     const txPromise = contract.vote(pollId, optionIndex, {
       value: ethers.parseEther(VOTE_COST),
       gasLimit: 100000
     });
 
-    const tx = await Promise.race([txPromise, timeoutPromise]) as ethers.ContractTransactionResponse;
+    const tx = await Promise.race([txPromise, walletResponseTimeout]) as ethers.ContractTransactionResponse;
     const txHash = tx.hash;
 
-    const waitPromise = tx.wait(1);
-    await Promise.race([waitPromise, timeoutPromise]);
+    // Wait for blockchain confirmation WITHOUT timeout - let it take as long as needed
+    await tx.wait(1);
 
     return { success: true, txHash };
   } catch (error: any) {

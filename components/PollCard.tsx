@@ -128,7 +128,7 @@ export default function PollCard({
       if (errorMessage === 'ALREADY_VOTED') {
         setAlreadyVotedError(true);
       } else if (errorMessage === 'TIMEOUT') {
-        setVoteError('Transaction timed out after 10 seconds. Please check your network connection and try again.');
+        setVoteError('Wallet connection timed out. Please check MetaMask is responding and try again.');
       } else if (errorMessage === 'INSUFFICIENT_BALANCE') {
         setVoteError('Insufficient balance. You need at least 0.001 ETH plus gas fees to vote.');
       } else if (errorMessage === 'USER_REJECTED') {
