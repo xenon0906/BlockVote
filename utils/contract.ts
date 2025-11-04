@@ -208,3 +208,28 @@ export const getActivePollsByCreator = async (
 
   return activeCount;
 };
+
+export const getExpiredPolls = async (provider: ethers.Provider, limit: number = 20) => {
+  const contract = getContract(provider);
+  const pollCount = await contract.pollCount();
+  const expiredPollIds: bigint[] = [];
+  const now = Math.floor(Date.now() / 1000);
+
+  for (let i = Number(pollCount); i >= 1 && expiredPollIds.length < limit; i--) {
+    try {
+      const poll = await getPoll(provider, i);
+      const expiresAt = Number(poll[4]);
+      const finalized = poll[5];
+
+      // Include polls that are expired but not finalized
+      if (now >= expiresAt && !finalized) {
+        expiredPollIds.push(BigInt(i));
+      }
+    } catch (error) {
+      // Skip deleted or invalid polls
+      continue;
+    }
+  }
+
+  return expiredPollIds;
+};

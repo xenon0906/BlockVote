@@ -4,7 +4,7 @@ import { useState, useEffect, lazy, Suspense, useMemo, useCallback } from 'react
 import { ethers } from 'ethers';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
-import { getActivePolls, getCompletedPolls, getPoll, getTotalPlatformVotes } from '@/utils/contract';
+import { getActivePolls, getCompletedPolls, getExpiredPolls, getPoll, getTotalPlatformVotes } from '@/utils/contract';
 
 // Dynamic imports for better performance
 const PollCard = dynamic(() => import('@/components/PollCard'), {
@@ -84,15 +84,17 @@ export default function Home() {
       );
       console.log('✅ Provider created');
 
-      const [activeIds, completedIds, totalVotes] = await Promise.all([
+      const [activeIds, completedIds, expiredIds, totalVotes] = await Promise.all([
         getActivePolls(provider, 50),
         getCompletedPolls(provider, 20),
+        getExpiredPolls(provider, 20),
         getTotalPlatformVotes(provider),
       ]);
 
       console.log('📊 Poll IDs loaded:', {
         activeIds: activeIds.map((id: bigint) => Number(id)),
         completedIds: completedIds.map((id: bigint) => Number(id)),
+        expiredIds: expiredIds.map((id: bigint) => Number(id)),
         totalVotes: Number(totalVotes)
       });
 
@@ -142,13 +144,40 @@ export default function Home() {
         })
       );
 
+      const expiredData = await Promise.all(
+        expiredIds.map(async (id: bigint) => {
+          try {
+            const data = await getPoll(provider, Number(id));
+            console.log(`✅ Loaded expired poll ${Number(id)}:`, data[1]); // Log question
+            return {
+              id: Number(data[0]),
+              question: data[1],
+              creator: data[2],
+              createdAt: data[3],
+              expiresAt: data[4],
+              finalized: data[5],
+              totalVotes: data[6],
+              totalFunds: data[7],
+              hasBet: data[8],
+            };
+          } catch (err) {
+            console.error(`❌ Failed to load expired poll ${Number(id)}:`, err);
+            return null;
+          }
+        })
+      );
+
       const filteredActive = activeData.filter((p): p is Poll => p !== null);
       const filteredCompleted = completedData.filter((p): p is Poll => p !== null);
+      const filteredExpired = expiredData.filter((p): p is Poll => p !== null);
 
-      console.log(`✅ Successfully loaded ${filteredActive.length} active polls and ${filteredCompleted.length} completed polls`);
+      // Combine expired polls with completed polls
+      const allCompletedPolls = [...filteredExpired, ...filteredCompleted];
+
+      console.log(`✅ Successfully loaded ${filteredActive.length} active polls, ${filteredExpired.length} expired polls, and ${filteredCompleted.length} completed polls`);
 
       setActivePolls(filteredActive);
-      setCompletedPolls(filteredCompleted);
+      setCompletedPolls(allCompletedPolls);
       setTotalPlatformVotes(Number(totalVotes));
     } catch (error) {
       console.error('❌ CRITICAL ERROR loading polls:', error);
