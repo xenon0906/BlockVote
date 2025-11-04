@@ -17,7 +17,7 @@ const CreatePollModal = memo(function CreatePollModal({ onClose, onSuccess }: Cr
   const [options, setOptions] = useState(['', '']);
   const [hasBet, setHasBet] = useState(false);
   const [betOption, setBetOption] = useState(0);
-  const [duration, setDuration] = useState(24);
+  const [duration, setDuration] = useState(1);
   const [durationUnit, setDurationUnit] = useState<'minutes' | 'hours'>('hours');
   const [isCreating, setIsCreating] = useState(false);
   const [activePollCount, setActivePollCount] = useState<number>(0);
@@ -134,25 +134,46 @@ const CreatePollModal = memo(function CreatePollModal({ onClose, onSuccess }: Cr
 
     setIsCreating(true);
     try {
-      // Convert duration to hours (minimum 1 hour for contract compatibility)
-      let durationInHours = durationUnit === 'minutes' ? Math.ceil(duration / 60) : duration;
-
-      // Ensure minimum of 1 hour (contract expects integer hours)
-      if (durationInHours < 1) {
-        durationInHours = 1;
+      // Ensure we're on Sepolia network before creating poll
+      const network = await signer.provider?.getNetwork();
+      if (network?.chainId !== 11155111n) { // Sepolia chain ID
+        alert('⚠️ Wrong Network!\n\nPlease switch to Sepolia Test Network to create a poll.');
+        setIsCreating(false);
+        return;
       }
 
-      // Show warning if duration was rounded up
-      if (durationUnit === 'minutes' && duration < 60) {
-        alert(`ℹ️ Note: Minimum poll duration is 1 hour. Your ${duration} minute${duration > 1 ? 's' : ''} poll has been set to 1 hour.`);
+      // Calculate duration in hours
+      let durationInHours: number;
+
+      if (durationUnit === 'minutes') {
+        // Convert minutes to hours, minimum 1 hour
+        if (duration < 60) {
+          alert('ℹ️ Minimum Duration\n\nDue to blockchain limitations, the minimum poll duration is 1 hour (60 minutes).\n\nYour poll will be set to 1 hour.');
+          durationInHours = 1;
+        } else {
+          durationInHours = Math.floor(duration / 60);
+        }
+      } else {
+        durationInHours = Math.max(1, duration);
       }
 
-      await createPoll(signer, sanitizedQuestion, sanitizedOptions, betOption, hasBet, Math.floor(durationInHours));
-      alert('✅ Poll created successfully!');
+      await createPoll(signer, sanitizedQuestion, sanitizedOptions, betOption, hasBet, durationInHours);
+      alert('✅ Poll created successfully on Sepolia network!');
       onSuccess();
       onClose();
     } catch (error: any) {
-      alert(error.message || 'Failed to create poll');
+      console.error('Poll creation error:', error);
+
+      // Handle specific error cases
+      if (error.message?.includes('user rejected')) {
+        alert('Transaction cancelled by user');
+      } else if (error.message?.includes('insufficient funds')) {
+        alert(`❌ Insufficient Funds\n\nYou need at least ${totalCost} Sepolia ETH plus gas fees to create this poll.\n\nGet free Sepolia ETH from:\n• https://sepoliafaucet.com\n• https://faucets.chain.link/sepolia`);
+      } else if (error.message?.includes('network')) {
+        alert('⚠️ Network Error\n\nPlease ensure you are connected to Sepolia Test Network.');
+      } else {
+        alert(`Failed to create poll: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setIsCreating(false);
     }
@@ -272,11 +293,12 @@ const CreatePollModal = memo(function CreatePollModal({ onClose, onSuccess }: Cr
                     type="number"
                     value={duration}
                     onChange={(e) => {
+                      const minValue = durationUnit === 'minutes' ? 60 : 1;
                       const maxValue = durationUnit === 'minutes' ? 43200 : 720;
-                      setDuration(Math.min(maxValue, Math.max(1, parseInt(e.target.value) || 1)));
+                      setDuration(Math.min(maxValue, Math.max(minValue, parseInt(e.target.value) || minValue)));
                     }}
                     className="input-field w-full"
-                    min="1"
+                    min={durationUnit === 'minutes' ? "60" : "1"}
                     max={durationUnit === 'minutes' ? 43200 : 720}
                   />
                 </div>
@@ -285,7 +307,8 @@ const CreatePollModal = memo(function CreatePollModal({ onClose, onSuccess }: Cr
                     type="button"
                     onClick={() => {
                       setDurationUnit('minutes');
-                      if (duration > 43200) setDuration(60);
+                      if (duration > 43200 || duration < 1) setDuration(60);
+                      else setDuration(Math.max(60, duration * 60));
                     }}
                     className={`flex-1 sm:flex-none px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                       durationUnit === 'minutes'
@@ -299,7 +322,11 @@ const CreatePollModal = memo(function CreatePollModal({ onClose, onSuccess }: Cr
                     type="button"
                     onClick={() => {
                       setDurationUnit('hours');
-                      if (duration > 720) setDuration(24);
+                      if (durationUnit === 'minutes') {
+                        setDuration(Math.max(1, Math.floor(duration / 60)));
+                      } else if (duration > 720) {
+                        setDuration(24);
+                      }
                     }}
                     className={`flex-1 sm:flex-none px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                       durationUnit === 'hours'
@@ -313,26 +340,24 @@ const CreatePollModal = memo(function CreatePollModal({ onClose, onSuccess }: Cr
               </div>
               <p className="text-xs text-gray-500 mt-2">
                 {durationUnit === 'minutes'
-                  ? duration < 60
-                    ? `⚠️ ${duration} minutes will be rounded to 1 hour (minimum duration)`
-                    : `${duration} minutes = ${Math.floor(duration / 60)} hours ${duration % 60} minutes`
+                  ? `${duration} minutes = ${Math.floor(duration / 60)} hours ${duration % 60 > 0 ? `${duration % 60} minutes` : ''}`
                   : `${duration} hours = ${Math.floor(duration / 24)} days ${duration % 24} hours`
                 }
               </p>
-              {durationUnit === 'minutes' && duration < 60 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mt-2">
-                  <p className="text-xs text-yellow-800">
-                    <span className="font-semibold">Note:</span> Due to blockchain limitations, the minimum poll duration is 1 hour. Polls set for less than 60 minutes will automatically be set to 1 hour.
+              {durationUnit === 'minutes' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mt-2">
+                  <p className="text-xs text-blue-800">
+                    <span className="font-semibold">Note:</span> Minimum poll duration is 1 hour (60 minutes) due to smart contract limitations.
                   </p>
                 </div>
               )}
               <div className="mt-2 flex flex-wrap gap-2">
                 {durationUnit === 'minutes' ? (
                   <>
-                    <button type="button" onClick={() => setDuration(5)} className="text-xs px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">5 min → 1h</button>
-                    <button type="button" onClick={() => setDuration(15)} className="text-xs px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">15 min → 1h</button>
-                    <button type="button" onClick={() => setDuration(30)} className="text-xs px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">30 min → 1h</button>
                     <button type="button" onClick={() => setDuration(60)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">1 hour</button>
+                    <button type="button" onClick={() => setDuration(120)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">2 hours</button>
+                    <button type="button" onClick={() => setDuration(180)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">3 hours</button>
+                    <button type="button" onClick={() => setDuration(360)} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">6 hours</button>
                   </>
                 ) : (
                   <>
@@ -415,9 +440,9 @@ const CreatePollModal = memo(function CreatePollModal({ onClose, onSuccess }: Cr
               <button
                 type="submit"
                 className="btn-primary flex-1 py-3 sm:py-2 text-sm sm:text-base order-1 sm:order-2"
-                disabled={isCreating}
+                disabled={isCreating || activePollCount >= 2}
               >
-                {isCreating ? 'Creating...' : 'Create Poll'}
+                {isCreating ? '🔄 Creating on Sepolia...' : activePollCount >= 2 ? '❌ Limit Reached' : '✅ Create Poll on Sepolia'}
               </button>
             </div>
           </form>
