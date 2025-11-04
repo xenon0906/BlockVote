@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import Header from '@/components/Header';
 import PollCard from '@/components/PollCard';
 import CreatePollModal from '@/components/CreatePollModal';
-import { getActivePolls, getCompletedPolls, getPoll } from '@/utils/contract';
+import { getActivePolls, getCompletedPolls, getPoll, getTotalPlatformVotes } from '@/utils/contract';
 
 interface Poll {
   id: number;
@@ -14,9 +14,11 @@ interface Poll {
   createdAt: bigint;
   expiresAt: bigint;
   finalized: boolean;
+  finalizedAt?: bigint;
   totalVotes: bigint;
   totalFunds: bigint;
   hasBet: boolean;
+  betOptionIndex?: number;
 }
 
 export default function Home() {
@@ -26,6 +28,8 @@ export default function Home() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [userAddress, setUserAddress] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
+  const [totalPlatformVotes, setTotalPlatformVotes] = useState<number>(0);
+  const [displayedVotes, setDisplayedVotes] = useState<number>(0);
 
   useEffect(() => {
     loadPolls();
@@ -34,6 +38,17 @@ export default function Home() {
     const interval = setInterval(loadPolls, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Animate vote counter
+  useEffect(() => {
+    if (displayedVotes < totalPlatformVotes) {
+      const increment = Math.ceil((totalPlatformVotes - displayedVotes) / 20);
+      const timer = setTimeout(() => {
+        setDisplayedVotes(prev => Math.min(prev + increment, totalPlatformVotes));
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [displayedVotes, totalPlatformVotes]);
 
   const checkWalletConnection = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
@@ -58,9 +73,10 @@ export default function Home() {
         process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/'
       );
 
-      const [activeIds, completedIds] = await Promise.all([
+      const [activeIds, completedIds, totalVotes] = await Promise.all([
         getActivePolls(provider, 50),
         getCompletedPolls(provider, 20),
+        getTotalPlatformVotes(provider),
       ]);
 
       const activeData = await Promise.all(
@@ -99,6 +115,7 @@ export default function Home() {
 
       setActivePolls(activeData);
       setCompletedPolls(completedData);
+      setTotalPlatformVotes(Number(totalVotes));
     } catch (error) {
       console.error('Error loading polls:', error);
     } finally {
@@ -154,13 +171,13 @@ export default function Home() {
                   <span>Create Poll</span>
                 </div>
               </button>
-              {activePolls.length > 0 && (
+              {totalPlatformVotes > 0 && (
                 <div className="flex items-center space-x-2 text-gray-700 bg-white px-6 py-4 rounded-2xl shadow-lg border border-gray-200">
                   <svg className="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
-                  <span className="font-bold text-lg">{activePolls.reduce((sum, poll) => sum + Number(poll.totalVotes), 0)}</span>
-                  <span className="text-sm">Votes Cast</span>
+                  <span className="font-bold text-lg tabular-nums">{displayedVotes.toLocaleString()}</span>
+                  <span className="text-sm">Total Votes</span>
                 </div>
               )}
             </div>

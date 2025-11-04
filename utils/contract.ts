@@ -144,3 +144,41 @@ export const getCreatorBetOption = async (signer: ethers.Signer, pollId: number)
   const address = await signer.getAddress();
   return await contract.getCreatorBetOption(pollId, address);
 };
+
+export const getPollExtended = async (provider: ethers.Provider, pollId: number) => {
+  const contract = getContract(provider);
+  const poll = await contract.polls(pollId);
+  return {
+    id: poll.id,
+    question: poll.question,
+    creator: poll.creator,
+    createdAt: poll.createdAt,
+    expiresAt: poll.expiresAt,
+    finalizedAt: poll.finalizedAt,
+    finalized: poll.finalized,
+    deleted: poll.deleted,
+    totalVotes: poll.totalVotes,
+    totalFunds: poll.totalFunds,
+    betOptionIndex: poll.betOptionIndex,
+    hasBet: poll.hasBet,
+    duration: poll.duration,
+  };
+};
+
+export const getTotalPlatformVotes = async (provider: ethers.Provider) => {
+  const contract = getContract(provider);
+  const pollCount = await contract.pollCount();
+  let totalVotes = BigInt(0);
+
+  for (let i = 1; i <= Number(pollCount); i++) {
+    try {
+      const poll = await getPoll(provider, i);
+      totalVotes += poll[6]; // totalVotes is at index 6
+    } catch (error) {
+      // Skip deleted or invalid polls
+      continue;
+    }
+  }
+
+  return totalVotes;
+};

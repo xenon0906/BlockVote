@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { vote, getPollOptions, hasVoted, getCreatorBetOption } from '@/utils/contract';
+import { vote, getPollOptions, hasVoted, getCreatorBetOption, finalizePoll, getPollExtended } from '@/utils/contract';
 import { getSigner, formatEther } from '@/utils/wallet';
 
 interface PollCardProps {
@@ -39,12 +39,21 @@ export default function PollCard({
   const [alreadyVotedError, setAlreadyVotedError] = useState(false);
   const [voteError, setVoteError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [finalizedAt, setFinalizedAt] = useState<bigint | null>(null);
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const [finalizeError, setFinalizeError] = useState<string | null>(null);
+  const [timeUntilCleanup, setTimeUntilCleanup] = useState<string>('');
 
   useEffect(() => {
     loadPollData();
-    const interval = setInterval(updateTimeRemaining, 1000);
+    const interval = setInterval(() => {
+      updateTimeRemaining();
+      if (finalized && finalizedAt) {
+        updateCleanupTime();
+      }
+    }, 1000);
     return () => clearInterval(interval);
-  }, [pollId, userAddress]);
+  }, [pollId, userAddress, finalized, finalizedAt]);
 
   const loadPollData = async () => {
     try {
@@ -57,6 +66,16 @@ export default function PollCard({
         text,
         votes: Number(votes[idx])
       })));
+
+      // Get finalized timestamp if poll is finalized
+      if (finalized) {
+        try {
+          const pollExtended = await getPollExtended(provider, pollId);
+          setFinalizedAt(pollExtended.finalizedAt);
+        } catch (error) {
+          console.log('Error fetching finalized timestamp');
+        }
+      }
 
       if (userAddress) {
         const voted = await hasVoted(provider, pollId, userAddress);
@@ -99,6 +118,53 @@ export default function PollCard({
       setTimeRemaining(`${hours}h ${minutes}m`);
     } else {
       setTimeRemaining(`${minutes}m`);
+    }
+  };
+
+  const updateCleanupTime = () => {
+    if (!finalizedAt) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    const finalized = Number(finalizedAt);
+    const cleanupTime = finalized + (24 * 60 * 60); // 24 hours
+    const remaining = cleanupTime - now;
+
+    if (remaining <= 0) {
+      setTimeUntilCleanup('Expiring soon');
+      return;
+    }
+
+    const hours = Math.floor(remaining / 3600);
+    const minutes = Math.floor((remaining % 3600) / 60);
+
+    if (hours > 0) {
+      setTimeUntilCleanup(`${hours}h ${minutes}m remaining`);
+    } else {
+      setTimeUntilCleanup(`${minutes}m remaining`);
+    }
+  };
+
+  const handleFinalize = async () => {
+    if (!userAddress) return;
+
+    setIsFinalizing(true);
+    setFinalizeError(null);
+
+    try {
+      const signer = await getSigner();
+      if (!signer) {
+        setFinalizeError('Please connect your wallet');
+        return;
+      }
+
+      await finalizePoll(signer, pollId);
+      await loadPollData();
+      if (onVoteSuccess) onVoteSuccess();
+    } catch (error: any) {
+      console.error('Error finalizing poll:', error);
+      setFinalizeError('Failed to finalize poll. Please try again.');
+    } finally {
+      setIsFinalizing(false);
     }
   };
 
@@ -206,6 +272,15 @@ export default function PollCard({
         </div>
       )}
 
+      {finalized && timeUntilCleanup && (
+        <div className="mb-4 sm:mb-5 bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl p-3 sm:p-4">
+          <p className="text-sm sm:text-base font-semibold text-orange-800 flex items-center gap-2">
+            <span>⏰</span>
+            <span>This poll will be archived in <span className="text-orange-900 font-bold">{timeUntilCleanup}</span></span>
+          </p>
+        </div>
+      )}
+
       {isCreator && (
         <div className="mb-4 sm:mb-5 flex flex-wrap gap-2 text-xs sm:text-sm md:text-base">
           <div className="flex items-center space-x-1.5 bg-gradient-to-r from-accent-50 to-accent-100 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full border-2 border-accent-200 shadow-sm">
@@ -272,7 +347,38 @@ export default function PollCard({
         })}
       </div>
 
-      {!finalized && !userVoted && !alreadyVotedError && userAddress && (
+      {!finalized && timeRemaining === 'Ended' && isCreator && hasBet && userAddress && (
+        <button
+          onClick={handleFinalize}
+          disabled={isFinalizing}
+          className={`relative w-full group touch-manipulation min-h-[56px] sm:min-h-[64px] mb-4 ${isFinalizing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-[0.98]'}`}
+        >
+          <div className={`absolute inset-0 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-xl blur transition-opacity ${isFinalizing ? 'opacity-50' : 'opacity-75 group-active:opacity-100'}`}></div>
+          <div className={`relative bg-gradient-to-r from-yellow-600 to-amber-600 text-white font-bold text-base sm:text-lg md:text-xl py-4 sm:py-5 px-4 rounded-xl shadow-lg transition-all ${!isFinalizing ? 'active:shadow-2xl' : ''}`}>
+            {isFinalizing ? '⏳ Claiming Reward...' : '🎁 Claim Your Reward'}
+          </div>
+        </button>
+      )}
+
+      {finalizeError && !finalized && (
+        <div className="bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-300 rounded-xl p-4 sm:p-5 text-center shadow-lg mb-4">
+          <p className="text-red-800 font-bold text-sm sm:text-base md:text-lg flex items-center justify-center gap-2 sm:gap-3">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <span>Error</span>
+          </p>
+          <p className="text-xs sm:text-sm md:text-base text-red-700 mt-2 sm:mt-3 px-2 leading-relaxed">{finalizeError}</p>
+          <button
+            onClick={() => setFinalizeError(null)}
+            className="mt-4 sm:mt-5 text-sm sm:text-base text-red-600 active:text-red-800 font-semibold underline touch-manipulation min-h-[44px] px-4 py-2"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {!finalized && !userVoted && !alreadyVotedError && userAddress && timeRemaining !== 'Ended' && (
         <button
           onClick={handleVote}
           disabled={selectedOption === null || isVoting}
