@@ -5,6 +5,7 @@ import { ethers } from 'ethers';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
 import { getActivePolls, getCompletedPolls, getPoll, getTotalPlatformVotes } from '@/utils/contract';
+import { pollLoadLimiter, getClientIdentifier } from '@/utils/rateLimit';
 
 // Dynamic imports for better performance
 const PollCard = dynamic(() => import('@/components/PollCard'), {
@@ -77,6 +78,16 @@ export default function Home() {
   };
 
   const loadPolls = async () => {
+    // Rate limiting check for poll loading
+    const identifier = getClientIdentifier(userAddress || undefined);
+    const rateLimitResult = pollLoadLimiter.checkLimit(identifier, 'load_polls');
+
+    if (!rateLimitResult.allowed) {
+      console.warn('Rate limit exceeded for poll loading');
+      setLoading(false);
+      return;
+    }
+
     try {
       const provider = new ethers.JsonRpcProvider(
         process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/'

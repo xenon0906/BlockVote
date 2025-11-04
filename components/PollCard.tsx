@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { vote, getPollOptions, hasVoted, getCreatorBetOption, finalizePoll, getPollExtended } from '@/utils/contract';
 import { getSigner, formatEther } from '@/utils/wallet';
+import { votingLimiter, getClientIdentifier, formatTimeRemaining } from '@/utils/rateLimit';
 
 interface PollCardProps {
   pollId: number;
@@ -178,6 +179,23 @@ export default function PollCard({
       const signer = await getSigner();
       if (!signer) {
         setVoteError('Please connect your wallet');
+        return;
+      }
+
+      // Rate limiting check
+      const identifier = getClientIdentifier(userAddress);
+      const rateLimitResult = votingLimiter.checkLimit(identifier, 'vote');
+
+      if (!rateLimitResult.allowed) {
+        if (rateLimitResult.blocked) {
+          const timeLeft = formatTimeRemaining(rateLimitResult.blockUntil! - Date.now());
+          setVoteError(`You've been temporarily blocked due to excessive voting attempts. Try again in ${timeLeft}.`);
+          setIsVoting(false);
+          return;
+        }
+        const timeLeft = formatTimeRemaining(rateLimitResult.resetTime - Date.now());
+        setVoteError(`You're voting too quickly. Please wait ${timeLeft} before trying again.`);
+        setIsVoting(false);
         return;
       }
 

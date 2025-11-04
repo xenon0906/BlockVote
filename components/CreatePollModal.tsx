@@ -5,6 +5,8 @@ import { ethers } from 'ethers';
 import { createPoll, POLL_CREATION_FEE, VOTE_COST, getActivePollsByCreator } from '@/utils/contract';
 import { getSigner } from '@/utils/wallet';
 import { moderatePoll } from '@/utils/contentModeration';
+import { pollCreationLimiter, getClientIdentifier, formatTimeRemaining } from '@/utils/rateLimit';
+import { sanitizeQuestionInput, sanitizePollInput, detectSuspiciousPatterns, validateURLsInText } from '@/utils/sanitization';
 
 interface CreatePollModalProps {
   onClose: () => void;
@@ -60,33 +62,89 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
   };
 
   const updateOption = (index: number, value: string) => {
+    // Sanitize input on change
+    const sanitized = sanitizePollInput(value);
     const newOptions = [...options];
-    newOptions[index] = value;
+    newOptions[index] = sanitized;
     setOptions(newOptions);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Check poll limit first
+    // Get wallet address for rate limiting
+    const signer = await getSigner();
+    if (!signer) {
+      alert('🔐 Please connect your wallet first');
+      return;
+    }
+
+    const address = await signer.getAddress();
+    const identifier = getClientIdentifier(address);
+
+    // Rate limiting check
+    const rateLimitResult = pollCreationLimiter.checkLimit(identifier, 'create_poll');
+    if (!rateLimitResult.allowed) {
+      if (rateLimitResult.blocked) {
+        const timeLeft = formatTimeRemaining(rateLimitResult.blockUntil! - Date.now());
+        alert(`🚫 BLOCKED\n\nYou've been temporarily blocked due to excessive requests.\n\nTry again in: ${timeLeft}`);
+        return;
+      }
+      const timeLeft = formatTimeRemaining(rateLimitResult.resetTime - Date.now());
+      alert(`⏱️ RATE LIMIT\n\nYou're creating polls too quickly.\n\nPlease wait: ${timeLeft}`);
+      return;
+    }
+
+    // Check poll limit
     if (activePollCount >= 2) {
       alert('❌ Limit Reached\n\nYou can only have 2 active polls at a time. Please wait for your existing polls to complete before creating a new one.');
       return;
     }
 
-    if (!question.trim()) {
-      alert('Please enter a question');
+    // Sanitize inputs
+    const sanitizedQuestion = sanitizeQuestionInput(question.trim());
+    const sanitizedOptions = options
+      .map(opt => sanitizePollInput(opt.trim()))
+      .filter(opt => opt.length > 0);
+
+    if (!sanitizedQuestion) {
+      alert('⚠️ Please enter a valid question');
       return;
     }
 
-    const validOptions = options.filter(opt => opt.trim());
-    if (validOptions.length < 2) {
-      alert('Please provide at least 2 options');
+    if (sanitizedOptions.length < 2) {
+      alert('⚠️ Please provide at least 2 valid options');
       return;
+    }
+
+    // Security checks
+    if (detectSuspiciousPatterns(sanitizedQuestion)) {
+      alert('🛡️ SECURITY ALERT\n\nYour question contains suspicious content that may be harmful.\n\nPlease revise your input.');
+      return;
+    }
+
+    for (const option of sanitizedOptions) {
+      if (detectSuspiciousPatterns(option)) {
+        alert('🛡️ SECURITY ALERT\n\nOne or more options contain suspicious content.\n\nPlease revise your inputs.');
+        return;
+      }
+    }
+
+    // URL validation
+    if (!validateURLsInText(sanitizedQuestion)) {
+      alert('🔗 Invalid URL\n\nThe question contains an invalid or suspicious URL.');
+      return;
+    }
+
+    for (const option of sanitizedOptions) {
+      if (!validateURLsInText(option)) {
+        alert('🔗 Invalid URL\n\nOne or more options contain invalid or suspicious URLs.');
+        return;
+      }
     }
 
     // Content moderation check
-    const moderationResult = moderatePoll(question, validOptions);
+    const moderationResult = moderatePoll(sanitizedQuestion, sanitizedOptions);
     if (!moderationResult.isAllowed) {
       alert(`❌ Content Violation\n\n${moderationResult.reason}\n\nPlease revise your poll to comply with community guidelines.`);
       return;
@@ -94,13 +152,7 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
 
     setIsCreating(true);
     try {
-      const signer = await getSigner();
-      if (!signer) {
-        alert('Please connect your wallet');
-        return;
-      }
-
-      await createPoll(signer, question, validOptions, betOption, hasBet, duration);
+      await createPoll(signer, sanitizedQuestion, sanitizedOptions, betOption, hasBet, duration);
       alert('✅ Poll created successfully!');
       onSuccess();
       onClose();
