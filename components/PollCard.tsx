@@ -149,7 +149,10 @@ export default function PollCard({
   };
 
   const handleFinalize = async () => {
-    if (!userAddress) return;
+    if (!userAddress) {
+      setFinalizeError('Please connect your wallet to finalize');
+      return;
+    }
 
     setIsFinalizing(true);
     setFinalizeError(null);
@@ -158,6 +161,7 @@ export default function PollCard({
       const signer = await getSigner();
       if (!signer) {
         setFinalizeError('Please connect your wallet');
+        setIsFinalizing(false);
         return;
       }
 
@@ -166,7 +170,12 @@ export default function PollCard({
       if (onVoteSuccess) onVoteSuccess();
     } catch (error: any) {
       console.error('Error finalizing poll:', error);
-      setFinalizeError('Failed to finalize poll. Please try again.');
+      const errorMsg = error.message || 'Failed to finalize poll';
+      if (errorMsg.includes('user rejected') || errorMsg.includes('User denied')) {
+        setFinalizeError('Transaction was rejected');
+      } else {
+        setFinalizeError(`Failed to finalize: ${errorMsg}`);
+      }
     } finally {
       setIsFinalizing(false);
     }
@@ -182,14 +191,27 @@ export default function PollCard({
       const signer = await getSigner();
       if (!signer) {
         setDeleteError('Please connect your wallet');
+        setIsDeleting(false);
         return;
       }
 
       await deletePoll(signer, pollId);
       if (onVoteSuccess) onVoteSuccess();
+      setShowDeleteConfirm(false);
     } catch (error: any) {
       console.error('Error deleting poll:', error);
-      setDeleteError('Failed to delete poll. Please try again.');
+      const errorMsg = error.message || 'Unknown error';
+      if (errorMsg.includes('Cleanup delay not passed')) {
+        setDeleteError('Poll can only be deleted 24 hours after finalization');
+      } else if (errorMsg.includes('Poll not finalized')) {
+        setDeleteError('Poll must be finalized before deletion');
+      } else if (errorMsg.includes('user rejected') || errorMsg.includes('User denied')) {
+        setDeleteError('Transaction was rejected');
+      } else if (errorMsg.includes('Already deleted')) {
+        setDeleteError('Poll has already been deleted');
+      } else {
+        setDeleteError(`Failed to delete: ${errorMsg}`);
+      }
       setIsDeleting(false);
     }
   };
@@ -299,15 +321,20 @@ export default function PollCard({
       <div className="flex justify-between items-start mb-4 sm:mb-5">
         <div className="flex-1 mr-3 sm:mr-4">
           <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 leading-tight mb-2">{question}</h3>
-          {isCreator && !finalized && (
+          {isCreator && finalized && finalizedAt && (
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="text-xs sm:text-sm text-red-600 hover:text-red-800 font-semibold underline flex items-center gap-1 touch-manipulation"
+              disabled={!finalizedAt || (Date.now() / 1000) < (Number(finalizedAt) + 24 * 60 * 60)}
+              className={`text-xs sm:text-sm font-semibold underline flex items-center gap-1 touch-manipulation ${
+                finalizedAt && (Date.now() / 1000) >= (Number(finalizedAt) + 24 * 60 * 60)
+                  ? 'text-red-600 hover:text-red-800 cursor-pointer'
+                  : 'text-gray-400 cursor-not-allowed'
+              }`}
             >
               <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
-              Delete Poll
+              {finalizedAt && (Date.now() / 1000) >= (Number(finalizedAt) + 24 * 60 * 60) ? 'Delete Poll' : `Delete in ${timeUntilCleanup}`}
             </button>
           )}
         </div>
@@ -403,7 +430,7 @@ export default function PollCard({
         })}
       </div>
 
-      {!finalized && timeRemaining === 'Ended' && isCreator && hasBet && userAddress && (
+      {!finalized && timeRemaining === 'Ended' && userAddress && (
         <button
           onClick={handleFinalize}
           disabled={isFinalizing}
@@ -411,7 +438,7 @@ export default function PollCard({
         >
           <div className={`absolute inset-0 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-xl blur transition-opacity ${isFinalizing ? 'opacity-50' : 'opacity-75 group-active:opacity-100'}`}></div>
           <div className={`relative bg-gradient-to-r from-yellow-600 to-amber-600 text-white font-bold text-base sm:text-lg md:text-xl py-4 sm:py-5 px-4 rounded-xl shadow-lg transition-all ${!isFinalizing ? 'active:shadow-2xl' : ''}`}>
-            {isFinalizing ? '⏳ Claiming Reward...' : '🎁 Claim Your Reward'}
+            {isFinalizing ? '⏳ Finalizing Poll...' : (isCreator && hasBet ? '🎁 Finalize & Claim Reward' : '✓ Finalize Poll Results')}
           </div>
         </button>
       )}
