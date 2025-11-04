@@ -1,0 +1,10 @@
+# BlockVote Robots.txt
+
+User-agent: *
+Allow: /
+Allow: /getting-started
+Allow: /how-it-works
+
+Disallow: /api/
+
+Sitemap: https://blockvoteapp.vercel.app/sitemap.xml

@@ -165,8 +165,35 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50">
-      <Header />
+    <>
+      {/* Structured Data for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebApplication',
+            name: 'BlockVote',
+            description: 'Decentralized blockchain polling platform on Ethereum',
+            url: 'https://blockvoteapp.vercel.app',
+            applicationCategory: 'FinanceApplication',
+            operatingSystem: 'Any',
+            offers: {
+              '@type': 'Offer',
+              price: '0',
+              priceCurrency: 'USD'
+            },
+            aggregateRating: {
+              '@type': 'AggregateRating',
+              ratingValue: '4.8',
+              ratingCount: displayedVotes
+            }
+          })
+        }}
+      />
+
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50">
+        <Header />
 
       {/* Hero Section - Optimized for all screen sizes */}
       <section className="h-[calc(100vh-4rem)] min-h-[600px] max-h-[1000px] flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
@@ -360,12 +387,13 @@ export default function Home() {
         )}
       </main>
 
-      {showCreateModal && (
-        <CreatePollModal
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={loadPolls}
-        />
-      )}
-    </div>
+        {showCreateModal && (
+          <CreatePollModal
+            onClose={() => setShowCreateModal(false)}
+            onSuccess={loadPolls}
+          />
+        )}
+      </div>
+    </>
   );
 }

@@ -2,32 +2,121 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
   @apply bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 min-h-screen;
+  touch-action: manipulation;
+}
+
+/* Enhanced touch targets for mobile */
+@media (hover: none) and (pointer: coarse) {
+  button, a, input, textarea, select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Prevent pull-to-refresh on mobile */
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #8b5cf6;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #7c3aed;
+}
+
+/* Loading animation */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.skeleton {
+  animation: shimmer 2s infinite linear;
+  background: linear-gradient(to right, #f0f0f0 0%, #e0e0e0 20%, #f0f0f0 40%, #f0f0f0 100%);
+  background-size: 1000px 100%;
+}
+
+/* Smooth transitions */
+* {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 min-h-[44px];
   }
 
   .btn-secondary {
-    @apply bg-white hover:bg-gray-50 text-primary-700 font-medium px-6 py-3 rounded-lg border-2 border-primary-200 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-white hover:bg-gray-50 text-primary-700 font-medium px-6 py-3 rounded-lg border-2 border-primary-200 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 min-h-[44px];
   }
 
   .card {
-    @apply bg-white rounded-xl shadow-lg p-6 transition-all duration-200 hover:shadow-xl border border-gray-100;
+    @apply bg-white rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-2xl border border-gray-100 hover:-translate-y-1;
   }
 
   .input-field {
-    @apply w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-primary-500 focus:outline-none transition-colors duration-200;
+    @apply w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none transition-all duration-200 min-h-[44px] text-base;
   }
 
   .poll-option {
-    @apply relative overflow-hidden bg-gradient-to-r from-white to-gray-50 hover:from-gray-50 hover:to-gray-100 border-2 border-gray-200 rounded-lg p-4 cursor-pointer transition-all duration-200;
+    @apply relative overflow-hidden bg-gradient-to-r from-white to-gray-50 hover:from-gray-50 hover:to-gray-100 border-2 border-gray-200 rounded-lg p-4 cursor-pointer transition-all duration-200 active:scale-98 min-h-[64px];
   }
 
   .poll-option-selected {
-    @apply border-primary-500 bg-gradient-to-r from-primary-50 to-accent-50;
+    @apply border-primary-500 bg-gradient-to-r from-primary-50 to-accent-50 shadow-lg;
+  }
+
+  /* Mobile-optimized button */
+  .btn-touch {
+    @apply relative min-h-[48px] px-6 py-3 font-semibold rounded-xl transition-all active:scale-95 select-none;
+  }
+
+  /* Tablet-optimized spacing */
+  @media (min-width: 640px) and (max-width: 1024px) {
+    .card {
+      @apply p-8;
+    }
+
+    .btn-primary, .btn-secondary {
+      @apply px-8 py-4 text-lg;
+    }
+  }
+
+  /* Focus visible for accessibility */
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary-500;
+  }
+
+  /* Prevent text selection on buttons */
+  button, .btn-touch {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
 }
