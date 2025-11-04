@@ -8,6 +8,7 @@ export default function Header() {
   const [address, setAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     checkConnection();
@@ -22,9 +23,12 @@ export default function Header() {
       if (!target.closest('.wallet-dropdown')) {
         setShowDropdown(false);
       }
+      if (!target.closest('.mobile-menu') && !target.closest('.mobile-menu-button')) {
+        setMobileMenuOpen(false);
+      }
     };
 
-    if (showDropdown) {
+    if (showDropdown || mobileMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
@@ -34,7 +38,7 @@ export default function Header() {
       }
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showDropdown]);
+  }, [showDropdown, mobileMenuOpen]);
 
   const checkConnection = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
@@ -124,6 +128,20 @@ export default function Header() {
           </nav>
 
           <div className="flex items-center space-x-2 md:space-x-4">
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 text-purple-200 hover:text-white hover:bg-white/10 rounded-lg transition-all mobile-menu-button"
+              aria-label="Toggle mobile menu"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
             {address ? (
               <div className="relative wallet-dropdown">
                 <button
@@ -179,6 +197,35 @@ export default function Header() {
             )}
           </div>
         </div>
+
+        {/* Mobile Menu Dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden mobile-menu">
+            <nav className="px-4 py-4 space-y-2 bg-slate-800/95 backdrop-blur-sm border-t border-purple-500/20">
+              <Link
+                href="/"
+                className="block px-4 py-3 text-base font-semibold text-purple-200 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                📊 Polls
+              </Link>
+              <Link
+                href="/getting-started"
+                className="block px-4 py-3 text-base font-semibold text-purple-200 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                🚀 Get Started
+              </Link>
+              <Link
+                href="/how-it-works"
+                className="block px-4 py-3 text-base font-semibold text-purple-200 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                💡 How It Works
+              </Link>
+            </nav>
+          </div>
+        )}
       </div>
     </header>
   );
