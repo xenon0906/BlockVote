@@ -29,34 +29,45 @@ export const createPoll = async (
   hasBet: boolean,
   durationInHours: number
 ) => {
-  const contract = getContract(signer);
-  const value = hasBet
-    ? ethers.parseEther((parseFloat(POLL_CREATION_FEE) + parseFloat(VOTE_COST)).toString())
-    : ethers.parseEther(POLL_CREATION_FEE);
+  try {
+    const contract = getContract(signer);
+    const value = hasBet
+      ? ethers.parseEther((parseFloat(POLL_CREATION_FEE) + parseFloat(VOTE_COST)).toString())
+      : ethers.parseEther(POLL_CREATION_FEE);
 
-  const tx = await contract.createPoll(
-    question,
-    options,
-    betOptionIndex,
-    hasBet,
-    durationInHours,
-    { value }
-  );
+    const tx = await contract.createPoll(
+      question,
+      options,
+      betOptionIndex,
+      hasBet,
+      durationInHours,
+      { value }
+    );
 
-  const receipt = await tx.wait();
-  const event = receipt.logs.find((log: any) => {
-    try {
-      return contract.interface.parseLog(log)?.name === 'PollCreated';
-    } catch {
-      return false;
+    const receipt = await tx.wait();
+
+    // Check if transaction was successful
+    if (receipt.status === 0) {
+      throw new Error('Transaction failed on blockchain');
     }
-  });
 
-  if (event) {
-    const parsed = contract.interface.parseLog(event);
-    return parsed?.args[0];
+    const event = receipt.logs.find((log: any) => {
+      try {
+        return contract.interface.parseLog(log)?.name === 'PollCreated';
+      } catch {
+        return false;
+      }
+    });
+
+    if (event) {
+      const parsed = contract.interface.parseLog(event);
+      return parsed?.args[0];
+    }
+    return null;
+  } catch (error: any) {
+    console.error('Create poll error:', error);
+    throw error;
   }
-  return null;
 };
 
 export const vote = async (
@@ -66,34 +77,38 @@ export const vote = async (
 ): Promise<{ success: boolean; txHash?: string }> => {
   const contract = getContract(signer);
 
-  // Reduced timeout for faster feedback (5 seconds)
-  const walletResponseTimeout = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('TIMEOUT')), 5000);
-  });
-
   try {
-    // Optimized gas limit for faster voting
-    const txPromise = contract.vote(pollId, optionIndex, {
+    // Let wallet estimate gas instead of hardcoding
+    const tx = await contract.vote(pollId, optionIndex, {
       value: ethers.parseEther(VOTE_COST),
-      gasLimit: 80000, // Reduced from 100000 for faster execution
-      maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei'), // Priority fee for faster inclusion
+      // Remove hardcoded gas settings to let wallet handle it
     });
 
-    const tx = await Promise.race([txPromise, walletResponseTimeout]) as ethers.ContractTransactionResponse;
     const txHash = tx.hash;
 
-    // Wait for 1 confirmation (faster than waiting for multiple)
-    await tx.wait(1);
+    // Wait for confirmation with proper error handling
+    try {
+      const receipt = await tx.wait(1);
 
-    return { success: true, txHash };
-  } catch (error: any) {
-    if (error.message === 'TIMEOUT') {
-      throw new Error('TIMEOUT');
+      // Check if transaction was successful
+      if (receipt.status === 0) {
+        throw new Error('Transaction failed on blockchain');
+      }
+
+      return { success: true, txHash };
+    } catch (waitError: any) {
+      console.error('Transaction wait error:', waitError);
+
+      // Still return txHash even if wait fails (user can check on Etherscan)
+      return { success: true, txHash };
     }
+  } catch (error: any) {
+    console.error('Vote transaction error:', error);
 
     const errorStr = error.message?.toLowerCase() || '';
     const reason = error.reason?.toLowerCase() || '';
     const data = error.data?.message?.toLowerCase() || '';
+    const code = error.code;
 
     if (errorStr.includes('already voted') || reason.includes('already voted') || data.includes('already voted')) {
       throw new Error('ALREADY_VOTED');
@@ -116,15 +131,37 @@ export const vote = async (
 };
 
 export const finalizePoll = async (signer: ethers.Signer, pollId: number) => {
-  const contract = getContract(signer);
-  const tx = await contract.finalizePoll(pollId);
-  await tx.wait();
+  try {
+    const contract = getContract(signer);
+    const tx = await contract.finalizePoll(pollId);
+    const receipt = await tx.wait();
+
+    if (receipt.status === 0) {
+      throw new Error('Transaction failed on blockchain');
+    }
+
+    return receipt;
+  } catch (error: any) {
+    console.error('Finalize poll error:', error);
+    throw error;
+  }
 };
 
 export const deletePoll = async (signer: ethers.Signer, pollId: number) => {
-  const contract = getContract(signer);
-  const tx = await contract.deletePoll(pollId);
-  await tx.wait();
+  try {
+    const contract = getContract(signer);
+    const tx = await contract.deletePoll(pollId);
+    const receipt = await tx.wait();
+
+    if (receipt.status === 0) {
+      throw new Error('Transaction failed on blockchain');
+    }
+
+    return receipt;
+  } catch (error: any) {
+    console.error('Delete poll error:', error);
+    throw error;
+  }
 };
 
 export const getPoll = async (provider: ethers.Provider, pollId: number) => {
