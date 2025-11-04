@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { ethers } from 'ethers';
-import { createPoll, POLL_CREATION_FEE, VOTE_COST, getActivePollsByCreator } from '@/utils/contract';
+import { createPoll, POLL_CREATION_FEE, VOTE_COST, getActivePollsByCreator, getCachedProvider } from '@/utils/contract';
 import { getSigner } from '@/utils/wallet';
 import { moderatePoll } from '@/utils/contentModeration';
 import { sanitizeQuestionInput, sanitizePollInput, detectSuspiciousPatterns, validateURLsInText } from '@/utils/sanitization';
@@ -12,7 +12,7 @@ interface CreatePollModalProps {
   onSuccess: () => void;
 }
 
-export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalProps) {
+const CreatePollModal = memo(function CreatePollModal({ onClose, onSuccess }: CreatePollModalProps) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [hasBet, setHasBet] = useState(false);
@@ -23,19 +23,13 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
   const [activePollCount, setActivePollCount] = useState<number>(0);
   const [isCheckingLimit, setIsCheckingLimit] = useState(false);
 
-  useEffect(() => {
-    checkActivePollLimit();
-  }, []);
-
-  const checkActivePollLimit = async () => {
+  const checkActivePollLimit = useCallback(async () => {
     setIsCheckingLimit(true);
     try {
       const signer = await getSigner();
       if (signer) {
         const address = await signer.getAddress();
-        const provider = new ethers.JsonRpcProvider(
-          process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/'
-        );
+        const provider = getCachedProvider();
         const count = await getActivePollsByCreator(provider, address);
         setActivePollCount(count);
       }
@@ -44,7 +38,11 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
     } finally {
       setIsCheckingLimit(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkActivePollLimit();
+  }, [checkActivePollLimit]);
 
   const addOption = () => {
     if (options.length < 6) {
@@ -409,4 +407,6 @@ export default function CreatePollModal({ onClose, onSuccess }: CreatePollModalP
       </div>
     </div>
   );
-}
+});
+
+export default CreatePollModal;

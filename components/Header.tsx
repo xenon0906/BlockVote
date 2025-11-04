@@ -98,20 +98,20 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 shadow-2xl border-b border-purple-500/20">
       <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div className="flex justify-between items-center h-16 md:h-20">
-          <Link href="/" className="flex items-center space-x-3 group">
+      <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 relative">
+        <div className="flex justify-between items-center h-14 sm:h-16 md:h-20">
+          <Link href="/" className="flex items-center space-x-2 xs:space-x-3 group">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-2xl blur-lg group-hover:blur-xl transition-all animate-pulse"></div>
-              <div className="relative w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-2xl transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
-                <span className="text-white font-black text-xl md:text-2xl drop-shadow-lg">🗳️</span>
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-xl sm:rounded-2xl blur-lg group-hover:blur-xl transition-all animate-pulse"></div>
+              <div className="relative w-8 h-8 xs:w-10 xs:h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-2xl transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                <span className="text-white font-black text-base xs:text-xl md:text-2xl drop-shadow-lg">🗳️</span>
               </div>
             </div>
             <div className="flex flex-col">
-              <h1 className="text-xl md:text-2xl lg:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 tracking-tight group-hover:from-pink-400 group-hover:via-purple-400 group-hover:to-blue-400 transition-all duration-500">
+              <h1 className="text-lg xs:text-xl sm:text-2xl md:text-2xl lg:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 tracking-tight group-hover:from-pink-400 group-hover:via-purple-400 group-hover:to-blue-400 transition-all duration-500">
                 BlockVote
               </h1>
-              <p className="text-xs text-purple-300 font-semibold hidden sm:block group-hover:text-pink-300 transition-colors">
+              <p className="text-[10px] xs:text-xs text-purple-300 font-semibold hidden 2xs:block group-hover:text-pink-300 transition-colors">
                 ⚡ Powered by Blockchain
               </p>
             </div>
@@ -148,13 +148,13 @@ export default function Header() {
               <div className="relative wallet-dropdown">
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
-                  className="flex items-center space-x-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-sm px-3 md:px-4 py-2.5 rounded-xl border border-purple-400/30 hover:border-purple-400/50 transition-all shadow-lg hover:shadow-purple-500/20"
+                  className="flex items-center space-x-1 xs:space-x-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-sm px-2 xs:px-3 md:px-4 py-2 xs:py-2.5 rounded-lg xs:rounded-xl border border-purple-400/30 hover:border-purple-400/50 transition-all shadow-lg hover:shadow-purple-500/20"
                 >
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></div>
-                  <span className="text-xs md:text-sm font-bold text-white">
+                  <div className="w-1.5 h-1.5 xs:w-2 xs:h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></div>
+                  <span className="text-[11px] xs:text-xs md:text-sm font-bold text-white">
                     {formatAddress(address)}
                   </span>
-                  <svg className={`w-4 h-4 text-purple-300 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-3 h-3 xs:w-4 xs:h-4 text-purple-300 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -191,9 +191,10 @@ export default function Header() {
                 disabled={isConnecting}
                 className="relative group"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl blur opacity-75 group-hover:opacity-100 transition-opacity"></div>
-                <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm md:text-base px-4 md:px-6 py-2.5 md:py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all">
-                  {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg xs:rounded-xl blur opacity-75 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-xs xs:text-sm md:text-base px-3 xs:px-4 md:px-6 py-2 xs:py-2.5 md:py-3 rounded-lg xs:rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all">
+                  <span className="hidden xs:inline">{isConnecting ? 'Connecting...' : 'Connect Wallet'}</span>
+                  <span className="xs:hidden">{isConnecting ? '...' : 'Connect'}</span>
                 </div>
               </button>
             )}

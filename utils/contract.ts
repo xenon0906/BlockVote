@@ -5,6 +5,18 @@ export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '';
 export const VOTE_COST = '0.001';
 export const POLL_CREATION_FEE = '0.005';
 
+// Cache provider instance for reuse
+let cachedProvider: ethers.JsonRpcProvider | null = null;
+
+export const getCachedProvider = (): ethers.JsonRpcProvider => {
+  if (!cachedProvider) {
+    cachedProvider = new ethers.JsonRpcProvider(
+      process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/'
+    );
+  }
+  return cachedProvider;
+};
+
 export const getContract = (signerOrProvider: ethers.Signer | ethers.Provider) => {
   return new ethers.Contract(CONTRACT_ADDRESS, BlockVoteABI, signerOrProvider);
 };

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { ethers } from 'ethers';
-import { vote, getPollOptions, hasVoted, getCreatorBetOption, finalizePoll, getPollExtended } from '@/utils/contract';
+import { vote, getPollOptions, hasVoted, getCreatorBetOption, finalizePoll, getPollExtended, getCachedProvider } from '@/utils/contract';
 import { getSigner, formatEther } from '@/utils/wallet';
 import { votingLimiter, getClientIdentifier, formatTimeRemaining } from '@/utils/rateLimit';
 
@@ -19,7 +19,7 @@ interface PollCardProps {
   onVoteSuccess?: () => void;
 }
 
-export default function PollCard({
+const PollCard = memo(function PollCard({
   pollId,
   question,
   creator,
@@ -44,19 +44,9 @@ export default function PollCard({
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadPollData();
-    const interval = setInterval(() => {
-      updateTimeRemaining();
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [pollId, userAddress, finalized, finalizedAt]);
-
-  const loadPollData = async () => {
+  const loadPollData = useCallback(async () => {
     try {
-      const provider = new ethers.JsonRpcProvider(
-        process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/'
-      );
+      const provider = getCachedProvider();
 
       const [texts, votes] = await getPollOptions(provider, pollId);
       setOptions(texts.map((text: string, idx: number) => ({
@@ -93,9 +83,9 @@ export default function PollCard({
     } catch (error) {
       console.error('Error loading poll:', error);
     }
-  };
+  }, [pollId, userAddress, creator, hasBet, finalized]);
 
-  const updateTimeRemaining = () => {
+  const updateTimeRemaining = useCallback(() => {
     const now = Math.floor(Date.now() / 1000);
     const expires = Number(expiresAt);
     const remaining = expires - now;
@@ -116,9 +106,17 @@ export default function PollCard({
     } else {
       setTimeRemaining(`${minutes}m`);
     }
-  };
+  }, [expiresAt]);
 
-  const handleFinalize = async () => {
+  useEffect(() => {
+    loadPollData();
+    const interval = setInterval(() => {
+      updateTimeRemaining();
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [loadPollData, updateTimeRemaining, finalizedAt]);
+
+  const handleFinalize = useCallback(async () => {
     if (!userAddress) {
       setFinalizeError('Please connect your wallet to finalize');
       return;
@@ -149,9 +147,9 @@ export default function PollCard({
     } finally {
       setIsFinalizing(false);
     }
-  };
+  }, [userAddress, pollId, loadPollData, onVoteSuccess]);
 
-  const handleVote = async () => {
+  const handleVote = useCallback(async () => {
     if (selectedOption === null || !userAddress) return;
 
     setIsVoting(true);
@@ -213,15 +211,15 @@ export default function PollCard({
     } finally {
       setIsVoting(false);
     }
-  };
+  }, [selectedOption, userAddress, pollId, loadPollData, onVoteSuccess]);
 
-  const getPercentage = (votes: number) => {
+  const getPercentage = useCallback((votes: number) => {
     const total = Number(totalVotes);
     if (total === 0) return 0;
     return Math.round((votes / total) * 100);
-  };
+  }, [totalVotes]);
 
-  const getWinningOption = () => {
+  const winningOption = useMemo(() => {
     if (!finalized) return null;
     let maxVotes = 0;
     let winningIdx = 0;
@@ -232,9 +230,9 @@ export default function PollCard({
       }
     });
     return winningIdx;
-  };
+  }, [finalized, options]);
 
-  const getWinningMargin = () => {
+  const winningMargin = useMemo(() => {
     if (!finalized || options.length === 0) return null;
 
     const sortedOptions = [...options].sort((a, b) => b.votes - a.votes);
@@ -245,11 +243,12 @@ export default function PollCard({
     const margin = winnerVotes - runnerUpVotes;
 
     return margin;
-  };
+  }, [finalized, options]);
 
-  const winningOption = getWinningOption();
-  const winningMargin = getWinningMargin();
-  const isCreator = userAddress && creator.toLowerCase() === userAddress.toLowerCase();
+  const isCreator = useMemo(() =>
+    userAddress && creator.toLowerCase() === userAddress.toLowerCase(),
+    [userAddress, creator]
+  );
 
   return (
     <div className="bg-white rounded-2xl p-4 sm:p-5 md:p-6 shadow-lg border border-gray-200 hover:shadow-2xl hover:border-purple-200 transition-all duration-300 touch-manipulation">
@@ -479,4 +478,19 @@ export default function PollCard({
 
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison for memo - only re-render if these values change
+  return (
+    prevProps.pollId === nextProps.pollId &&
+    prevProps.question === nextProps.question &&
+    prevProps.creator === nextProps.creator &&
+    prevProps.expiresAt === nextProps.expiresAt &&
+    prevProps.finalized === nextProps.finalized &&
+    prevProps.totalVotes === nextProps.totalVotes &&
+    prevProps.totalFunds === nextProps.totalFunds &&
+    prevProps.hasBet === nextProps.hasBet &&
+    prevProps.userAddress === nextProps.userAddress
+  );
+});
+
+export default PollCard;

@@ -4,7 +4,7 @@ import { useState, useEffect, lazy, Suspense, useMemo, useCallback } from 'react
 import { ethers } from 'ethers';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
-import { getActivePolls, getCompletedPolls, getExpiredPolls, getPoll, getTotalPlatformVotes } from '@/utils/contract';
+import { getActivePolls, getCompletedPolls, getExpiredPolls, getPoll, getTotalPlatformVotes, getCachedProvider } from '@/utils/contract';
 
 // Dynamic imports for better performance
 const PollCard = dynamic(() => import('@/components/PollCard'), {
@@ -39,12 +39,19 @@ export default function Home() {
   const [totalPlatformVotes, setTotalPlatformVotes] = useState<number>(0);
   const [displayedVotes, setDisplayedVotes] = useState<number>(0);
 
+  // Cache provider instance for better performance
+  const [provider, setProvider] = useState<ethers.JsonRpcProvider | null>(null);
+
   useEffect(() => {
-    loadPolls();
+    // Use cached provider
+    const cachedProvider = getCachedProvider();
+    setProvider(cachedProvider);
+
+    loadPolls(cachedProvider);
     checkWalletConnection();
 
     // Increase interval to 60 seconds for better performance
-    const interval = setInterval(loadPolls, 60000);
+    const interval = setInterval(() => loadPolls(cachedProvider), 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -76,132 +83,129 @@ export default function Home() {
     }
   };
 
-  const loadPolls = async () => {
+  const loadPolls = async (providerInstance?: ethers.JsonRpcProvider) => {
     try {
-      console.log('🔍 Starting to load polls...');
-      const provider = new ethers.JsonRpcProvider(
+      const currentProvider = providerInstance || provider || new ethers.JsonRpcProvider(
         process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/'
       );
-      console.log('✅ Provider created');
 
+      // Batch all initial data fetches for better performance
       const [activeIds, completedIds, expiredIds, totalVotes] = await Promise.all([
-        getActivePolls(provider, 50),
-        getCompletedPolls(provider, 20),
-        getExpiredPolls(provider, 20),
-        getTotalPlatformVotes(provider),
+        getActivePolls(currentProvider, 50),
+        getCompletedPolls(currentProvider, 20),
+        getExpiredPolls(currentProvider, 20),
+        getTotalPlatformVotes(currentProvider),
       ]);
 
-      console.log('📊 Poll IDs loaded:', {
-        activeIds: activeIds.map((id: bigint) => Number(id)),
-        completedIds: completedIds.map((id: bigint) => Number(id)),
-        expiredIds: expiredIds.map((id: bigint) => Number(id)),
-        totalVotes: Number(totalVotes)
+      // Combine all poll IDs and deduplicate for batch processing
+      const allPollIds = new Set<number>();
+      activeIds.forEach((id: bigint) => allPollIds.add(Number(id)));
+      completedIds.forEach((id: bigint) => allPollIds.add(Number(id)));
+      expiredIds.forEach((id: bigint) => allPollIds.add(Number(id)));
+
+      // Optimized batch loading with Map for O(1) lookups
+      const pollDataMap = new Map<number, Poll>();
+
+      // Process all polls in parallel batches of 10 for optimal performance
+      const pollIdsArray = Array.from(allPollIds);
+      const batchSize = 10;
+
+      for (let i = 0; i < pollIdsArray.length; i += batchSize) {
+        const batch = pollIdsArray.slice(i, i + batchSize);
+        const batchResults = await Promise.allSettled(
+          batch.map(async (id) => {
+            const data = await getPoll(currentProvider, id);
+            return {
+              id: Number(data[0]),
+              question: data[1],
+              creator: data[2],
+              createdAt: data[3],
+              expiresAt: data[4],
+              finalized: data[5],
+              totalVotes: data[6],
+              totalFunds: data[7],
+              hasBet: data[8],
+            };
+          })
+        );
+
+        batchResults.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            pollDataMap.set(batch[index], result.value);
+          }
+        });
+      }
+
+      // Use Map for O(1) lookup when categorizing polls
+      const activeSet = new Set(activeIds.map((id: bigint) => Number(id)));
+      const completedSet = new Set(completedIds.map((id: bigint) => Number(id)));
+      const expiredSet = new Set(expiredIds.map((id: bigint) => Number(id)));
+
+      const filteredActive: Poll[] = [];
+      const filteredCompleted: Poll[] = [];
+      const filteredExpired: Poll[] = [];
+
+      // Single pass through data with O(1) lookups
+      pollDataMap.forEach((poll, id) => {
+        if (activeSet.has(id)) {
+          filteredActive.push(poll);
+        }
+        if (completedSet.has(id)) {
+          filteredCompleted.push(poll);
+        }
+        if (expiredSet.has(id)) {
+          filteredExpired.push(poll);
+        }
       });
-
-      const activeData = await Promise.all(
-        activeIds.map(async (id: bigint) => {
-          try {
-            const data = await getPoll(provider, Number(id));
-            console.log(`✅ Loaded active poll ${Number(id)}:`, data[1]); // Log question
-            return {
-              id: Number(data[0]),
-              question: data[1],
-              creator: data[2],
-              createdAt: data[3],
-              expiresAt: data[4],
-              finalized: data[5],
-              totalVotes: data[6],
-              totalFunds: data[7],
-              hasBet: data[8],
-            };
-          } catch (err) {
-            console.error(`❌ Failed to load active poll ${Number(id)}:`, err);
-            return null;
-          }
-        })
-      );
-
-      const completedData = await Promise.all(
-        completedIds.map(async (id: bigint) => {
-          try {
-            const data = await getPoll(provider, Number(id));
-            console.log(`✅ Loaded completed poll ${Number(id)}:`, data[1]); // Log question
-            return {
-              id: Number(data[0]),
-              question: data[1],
-              creator: data[2],
-              createdAt: data[3],
-              expiresAt: data[4],
-              finalized: data[5],
-              totalVotes: data[6],
-              totalFunds: data[7],
-              hasBet: data[8],
-            };
-          } catch (err) {
-            console.error(`❌ Failed to load completed poll ${Number(id)}:`, err);
-            return null;
-          }
-        })
-      );
-
-      const expiredData = await Promise.all(
-        expiredIds.map(async (id: bigint) => {
-          try {
-            const data = await getPoll(provider, Number(id));
-            console.log(`✅ Loaded expired poll ${Number(id)}:`, data[1]); // Log question
-            return {
-              id: Number(data[0]),
-              question: data[1],
-              creator: data[2],
-              createdAt: data[3],
-              expiresAt: data[4],
-              finalized: data[5],
-              totalVotes: data[6],
-              totalFunds: data[7],
-              hasBet: data[8],
-            };
-          } catch (err) {
-            console.error(`❌ Failed to load expired poll ${Number(id)}:`, err);
-            return null;
-          }
-        })
-      );
-
-      const filteredActive = activeData.filter((p): p is Poll => p !== null);
-      const filteredCompleted = completedData.filter((p): p is Poll => p !== null);
-      const filteredExpired = expiredData.filter((p): p is Poll => p !== null);
 
       // Combine expired polls with completed polls
       const allCompletedPolls = [...filteredExpired, ...filteredCompleted];
-
-      console.log(`✅ Successfully loaded ${filteredActive.length} active polls, ${filteredExpired.length} expired polls, and ${filteredCompleted.length} completed polls`);
 
       setActivePolls(filteredActive);
       setCompletedPolls(allCompletedPolls);
       setTotalPlatformVotes(Number(totalVotes));
     } catch (error) {
-      console.error('❌ CRITICAL ERROR loading polls:', error);
-      alert(`Failed to load polls: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Failed to load polls:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const getTrendingPolls = () => {
+  // Memoized trending polls calculation with optimized algorithm
+  const getTrendingPolls = useMemo(() => {
     if (activePolls.length < 9) return [];
-    return [...activePolls]
-      .sort((a, b) => Number(b.totalVotes) - Number(a.totalVotes))
-      .slice(0, 3);
-  };
 
-  const trendingPolls = getTrendingPolls();
-  const trendingPollIds = new Set(trendingPolls.map(p => p.id));
+    // Use partial sort for O(n) instead of O(n log n) for top 3
+    const top3 = [];
+    const pollsCopy = [...activePolls];
 
-  const displayPolls = completedPolls.length === 0
-    ? activePolls.filter(poll => !trendingPollIds.has(poll.id))
-    : activeTab === 'active'
-    ? activePolls.filter(poll => !trendingPollIds.has(poll.id))
-    : completedPolls;
+    for (let i = 0; i < 3 && i < pollsCopy.length; i++) {
+      let maxIndex = i;
+      for (let j = i + 1; j < pollsCopy.length; j++) {
+        if (Number(pollsCopy[j].totalVotes) > Number(pollsCopy[maxIndex].totalVotes)) {
+          maxIndex = j;
+        }
+      }
+      // Swap
+      if (maxIndex !== i) {
+        [pollsCopy[i], pollsCopy[maxIndex]] = [pollsCopy[maxIndex], pollsCopy[i]];
+      }
+      top3.push(pollsCopy[i]);
+    }
+
+    return top3;
+  }, [activePolls]);
+
+  const trendingPolls = getTrendingPolls;
+  const trendingPollIds = useMemo(() => new Set(trendingPolls.map(p => p.id)), [trendingPolls]);
+
+  // Memoized display polls calculation
+  const displayPolls = useMemo(() => {
+    if (completedPolls.length === 0 || activeTab === 'active') {
+      return activePolls.filter(poll => !trendingPollIds.has(poll.id));
+    }
+    return completedPolls;
+  }, [activeTab, activePolls, completedPolls, trendingPollIds]);
 
   const handleRefresh = useCallback(() => {
     setLoading(true);
@@ -239,65 +243,66 @@ export default function Home() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50">
         <Header />
 
-      {/* Hero Section - Optimized for all screen sizes */}
-      <section className="h-[calc(100vh-4rem)] min-h-[600px] max-h-[1000px] flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
+      {/* Hero Section - Mobile-First Optimized */}
+      <section className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16">
         <div className="w-full max-w-7xl mx-auto">
-          <div className="flex flex-col items-center justify-center text-center h-full space-y-6 md:space-y-8">
+          <div className="flex flex-col items-center justify-center text-center space-y-4 sm:space-y-6 md:space-y-8">
             {/* Live Badge */}
-            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-100 to-purple-100 px-4 py-2 rounded-full border border-purple-200 shadow-md">
+            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-100 to-purple-100 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-purple-200 shadow-md">
               <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-              <span className="text-xs sm:text-sm font-semibold text-purple-700">Live on Sepolia</span>
+              <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-purple-700">Live on Sepolia</span>
             </div>
 
-            {/* Main Heading */}
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 leading-tight px-4">
-              Your Voice. Your Choice.
+            {/* Main Heading - Optimized for mobile visibility */}
+            <h1 className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 leading-[1.1] sm:leading-tight">
+              Your Voice.<br className="sm:hidden" />
+              <span className="block sm:inline"> Your Choice.</span>
             </h1>
 
-            {/* Description */}
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 max-w-2xl lg:max-w-4xl px-4">
+            {/* Description - Better mobile sizing */}
+            <p className="text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 max-w-xs xs:max-w-sm sm:max-w-2xl lg:max-w-4xl leading-relaxed">
               Decentralized polling powered by blockchain. Every vote counts, every opinion matters.
             </p>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center w-full max-w-2xl px-4">
+            {/* CTA Buttons - Mobile Optimized */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center w-full max-w-xl">
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="relative group w-full sm:w-auto"
+                className="relative group w-full sm:w-auto max-w-[280px]"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity"></div>
-                <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-base md:text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-2xl shadow-2xl hover:shadow-purple-500/50 transform hover:scale-105 transition-all flex items-center justify-center space-x-2">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl sm:rounded-2xl blur opacity-75 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm sm:text-base md:text-lg px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 rounded-xl sm:rounded-2xl shadow-xl hover:shadow-purple-500/50 transform hover:scale-105 transition-all flex items-center justify-center space-x-2">
                   <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   <span>Create Poll</span>
                 </div>
               </button>
-              <div className="flex items-center space-x-2 text-gray-700 bg-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl shadow-lg border border-gray-200 w-full sm:w-auto justify-center">
+              <div className="flex items-center space-x-2 text-gray-700 bg-white px-4 sm:px-5 md:px-6 py-2.5 sm:py-3 md:py-4 rounded-xl sm:rounded-2xl shadow-lg border border-gray-200 w-full sm:w-auto max-w-[280px] justify-center">
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                <span className="font-bold text-base sm:text-lg tabular-nums">{displayedVotes.toLocaleString()}</span>
+                <span className="font-bold text-sm sm:text-base md:text-lg tabular-nums">{displayedVotes.toLocaleString()}</span>
                 <span className="text-xs sm:text-sm">Total Votes</span>
               </div>
             </div>
 
-            {/* Feature Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 lg:gap-8 w-full max-w-6xl px-4 pt-4">
-              <div className="bg-white rounded-xl md:rounded-2xl p-5 md:p-6 lg:p-8 shadow-lg md:shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
-                <div className="text-3xl sm:text-4xl md:text-5xl mb-2 md:mb-3">🗳️</div>
-                <h3 className="font-bold text-gray-900 text-base sm:text-lg md:text-xl mb-1 md:mb-2">Vote Freely</h3>
-                <p className="text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed">Participate in polls that matter to you. Every vote is recorded on-chain.</p>
+            {/* Feature Cards - Mobile Responsive */}
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8 w-full max-w-5xl mt-2 sm:mt-4">
+              <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl p-4 sm:p-5 md:p-6 lg:p-8 shadow-md sm:shadow-lg md:shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl xs:col-span-2 sm:col-span-1">
+                <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 md:mb-3">🗳️</div>
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base md:text-lg lg:text-xl mb-1 md:mb-2">Vote Freely</h3>
+                <p className="text-gray-600 text-[11px] sm:text-xs md:text-sm lg:text-base leading-relaxed">Participate in polls that matter. Every vote on-chain.</p>
               </div>
-              <div className="bg-white rounded-xl md:rounded-2xl p-5 md:p-6 lg:p-8 shadow-lg md:shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
-                <div className="text-3xl sm:text-4xl md:text-5xl mb-2 md:mb-3">🔒</div>
-                <h3 className="font-bold text-gray-900 text-base sm:text-lg md:text-xl mb-1 md:mb-2">Transparent</h3>
-                <p className="text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed">All votes are public and verifiable on the blockchain. No manipulation.</p>
+              <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl p-4 sm:p-5 md:p-6 lg:p-8 shadow-md sm:shadow-lg md:shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
+                <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 md:mb-3">🔒</div>
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base md:text-lg lg:text-xl mb-1 md:mb-2">Transparent</h3>
+                <p className="text-gray-600 text-[11px] sm:text-xs md:text-sm lg:text-base leading-relaxed">Verifiable on blockchain. No manipulation.</p>
               </div>
-              <div className="bg-white rounded-xl md:rounded-2xl p-5 md:p-6 lg:p-8 shadow-lg md:shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
-                <div className="text-3xl sm:text-4xl md:text-5xl mb-2 md:mb-3">⚡</div>
-                <h3 className="font-bold text-gray-900 text-base sm:text-lg md:text-xl mb-1 md:mb-2">Instant Results</h3>
-                <p className="text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed">See live results as votes come in. Real-time updates for every poll.</p>
+              <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl p-4 sm:p-5 md:p-6 lg:p-8 shadow-md sm:shadow-lg md:shadow-xl border border-gray-200 text-center transform hover:scale-105 transition-all hover:shadow-2xl">
+                <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-2 md:mb-3">⚡</div>
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base md:text-lg lg:text-xl mb-1 md:mb-2">Instant Results</h3>
+                <p className="text-gray-600 text-[11px] sm:text-xs md:text-sm lg:text-base leading-relaxed">Live results. Real-time updates.</p>
               </div>
             </div>
           </div>
